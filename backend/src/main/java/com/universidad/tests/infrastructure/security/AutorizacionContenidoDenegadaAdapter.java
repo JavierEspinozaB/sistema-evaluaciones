@@ -1,7 +1,7 @@
 
 package com.universidad.tests.infrastructure.security;
 
-import com.universidad.tests.application.port.AutorizacionContenidoPort;
+import com.universidad.tests.domain.port.AutorizacionContenidoPort;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 

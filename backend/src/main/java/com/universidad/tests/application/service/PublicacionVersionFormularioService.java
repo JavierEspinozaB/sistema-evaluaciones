@@ -1,7 +1,7 @@
 
 package com.universidad.tests.application.service;
 
-import com.universidad.tests.application.port.AutorizacionContenidoPort;
+import com.universidad.tests.domain.port.AutorizacionContenidoPort;
 
 import com.universidad.tests.domain.model.ConfiguracionSubprueba;
 import com.universidad.tests.domain.model.EstadoVersionFormulario;

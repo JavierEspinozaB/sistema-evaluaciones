@@ -1,5 +1,5 @@
 
-package com.universidad.tests.application.port;
+package com.universidad.tests.domain.port;
 
 public interface AutorizacionContenidoPort {
 
