@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @Transactional
@@ -431,4 +432,477 @@ class PersistenciaCatalogoIntegrationTest {
         assertThat(opcionesV1.get(0).getIdOpcion())
             .isNotEqualTo(opcionesV2.get(0).getIdOpcion());
     }
+
+    @Test
+    void debeImpedirModificarPreguntaDeVersionPublicada() {
+
+        // 1. Crear test y subprueba
+        TestJpaEntity test = testRepository.saveAndFlush(
+            new TestJpaEntity(
+                "PROTECCION_" + UUID.randomUUID(),
+                "Test de proteccion",
+                "Verificacion de inmutabilidad",
+                true
+            )
+        );
+
+        SubpruebaJpaEntity subprueba =
+            subpruebaRepository.saveAndFlush(
+                new SubpruebaJpaEntity(
+                    test,
+                    "SUB_PROTECCION",
+                    "Subprueba de proteccion",
+                    "Subprueba para verificar restricciones"
+                )
+            );
+
+        // 2. Crear una version en borrador
+        VersionFormularioJpaEntity version =
+            versionRepository.saveAndFlush(
+                new VersionFormularioJpaEntity(
+                    test,
+                    "v1",
+                    "Version para probar proteccion",
+                    "FUENTE-PRUEBA"
+                )
+            );
+
+        // 3. Crear su configuracion
+        ConfiguracionSubpruebaJpaEntity configuracion =
+            new ConfiguracionSubpruebaJpaEntity(
+                version,
+                subprueba,
+                1,
+                null,
+                TipoRespuesta.SELECCION,
+                "Instrucciones de prueba",
+                null,
+                null
+            );
+
+        entityManager.persist(configuracion);
+
+        // 4. Crear una pregunta
+        PreguntaJpaEntity pregunta = new PreguntaJpaEntity(
+            configuracion,
+            "1",
+            1,
+            "Pregunta original",
+            null
+        );
+
+        entityManager.persist(pregunta);
+
+        // 5. Crear una opcion
+        OpcionRespuestaJpaEntity opcion =
+            new OpcionRespuestaJpaEntity(
+                pregunta,
+                "A",
+                1,
+                "Respuesta original",
+                null
+            );
+
+        entityManager.persist(opcion);
+        entityManager.flush();
+
+        // 6. Publicar la version directamente en PostgreSQL
+        // para comprobar el funcionamiento del trigger
+        entityManager.createNativeQuery(
+                "UPDATE version_formulario " +
+                    "SET estado = 'PUBLICADA', " +
+                    "publicada_en = CURRENT_TIMESTAMP, " +
+                    "evidencia_validacion = 'VALIDACION-PRUEBA' " +
+                    "WHERE id_version_formulario = :id"
+            )
+            .setParameter("id", version.getIdVersionFormulario())
+            .executeUpdate();
+
+        // 7. Intentar modificar una pregunta publicada
+        // PostgreSQL debe rechazar esta operacion
+        assertThatThrownBy(() ->
+            entityManager.createNativeQuery(
+                    "UPDATE pregunta " +
+                        "SET enunciado = 'Pregunta modificada' " +
+                        "WHERE id_pregunta = :idPregunta"
+                )
+                .setParameter("idPregunta", pregunta.getIdPregunta())
+                .executeUpdate()
+        )
+            .hasStackTraceContaining(
+                "No se puede modificar una version publicada o retirada"
+            );
+    }
+
+    @Test
+    void debeImpedirModificarConfiguracionDeVersionPublicada() {
+
+        // 1. Crear test y subprueba
+        TestJpaEntity test = testRepository.saveAndFlush(
+            new TestJpaEntity(
+                "CONFIG_" + UUID.randomUUID(),
+                "Test de proteccion de configuraciones",
+                "Prueba de integridad",
+                true
+            )
+        );
+
+        SubpruebaJpaEntity subprueba =
+            subpruebaRepository.saveAndFlush(
+                new SubpruebaJpaEntity(
+                    test,
+                    "SUB_CONFIG",
+                    "Subprueba de configuracion",
+                    "Subprueba para probar inmutabilidad"
+                )
+            );
+
+        // 2. Crear version en borrador
+        VersionFormularioJpaEntity version =
+            versionRepository.saveAndFlush(
+                new VersionFormularioJpaEntity(
+                    test,
+                    "v1",
+                    "Version de prueba",
+                    "FUENTE-CONFIG"
+                )
+            );
+
+        // 3. Crear una configuracion
+        ConfiguracionSubpruebaJpaEntity configuracion =
+            new ConfiguracionSubpruebaJpaEntity(
+                version,
+                subprueba,
+                1,
+                null,
+                TipoRespuesta.SELECCION,
+                "Instrucciones originales",
+                null,
+                null
+            );
+
+        entityManager.persist(configuracion);
+        entityManager.flush();
+
+        // 4. Publicar la version en PostgreSQL
+        entityManager.createNativeQuery(
+                "UPDATE version_formulario " +
+                    "SET estado = 'PUBLICADA', " +
+                    "publicada_en = CURRENT_TIMESTAMP, " +
+                    "evidencia_validacion = 'VALIDACION-CONFIG' " +
+                    "WHERE id_version_formulario = :id"
+            )
+            .setParameter("id", version.getIdVersionFormulario())
+            .executeUpdate();
+
+        // 5. Intentar modificar la configuracion publicada
+        assertThatThrownBy(() ->
+            entityManager.createNativeQuery(
+                    "UPDATE configuracion_subprueba " +
+                        "SET instrucciones_ref = 'Instrucciones modificadas' " +
+                        "WHERE id_configuracion_subprueba = :id"
+                )
+                .setParameter(
+                    "id",
+                    configuracion.getIdConfiguracionSubprueba()
+                )
+                .executeUpdate()
+        )
+            .hasStackTraceContaining(
+                "No se puede modificar una version publicada o retirada"
+            );
+
+    }
+
+    @Test
+    void debeImpedirModificarOpcionDeVersionPublicada() {
+
+        // 1. Crear test y subprueba
+        TestJpaEntity test = testRepository.saveAndFlush(
+            new TestJpaEntity(
+                "OPCION_" + UUID.randomUUID(),
+                "Test de proteccion de opciones",
+                "Prueba de inmutabilidad",
+                true
+            )
+        );
+
+        SubpruebaJpaEntity subprueba =
+            subpruebaRepository.saveAndFlush(
+                new SubpruebaJpaEntity(
+                    test,
+                    "SUB_OPCION",
+                    "Subprueba de opciones",
+                    "Prueba de proteccion"
+                )
+            );
+
+        // 2. Crear version en borrador
+        VersionFormularioJpaEntity version =
+            versionRepository.saveAndFlush(
+                new VersionFormularioJpaEntity(
+                    test,
+                    "v1",
+                    "Version para proteger opciones",
+                    "FUENTE-OPCIONES"
+                )
+            );
+
+        // 3. Crear configuracion
+        ConfiguracionSubpruebaJpaEntity configuracion =
+            new ConfiguracionSubpruebaJpaEntity(
+                version,
+                subprueba,
+                1,
+                null,
+                TipoRespuesta.SELECCION,
+                "Instrucciones de prueba",
+                null,
+                null
+            );
+
+        entityManager.persist(configuracion);
+
+        // 4. Crear pregunta
+        PreguntaJpaEntity pregunta = new PreguntaJpaEntity(
+            configuracion,
+            "1",
+            1,
+            "Pregunta de prueba",
+            null
+        );
+
+        entityManager.persist(pregunta);
+
+        // 5. Crear opcion
+        OpcionRespuestaJpaEntity opcion =
+            new OpcionRespuestaJpaEntity(
+                pregunta,
+                "A",
+                1,
+                "Respuesta original",
+                null
+            );
+
+        entityManager.persist(opcion);
+        entityManager.flush();
+
+        // 6. Publicar la version
+        entityManager.createNativeQuery(
+                "UPDATE version_formulario " +
+                    "SET estado = 'PUBLICADA', " +
+                    "publicada_en = CURRENT_TIMESTAMP, " +
+                    "evidencia_validacion = 'VALIDACION-OPCIONES' " +
+                    "WHERE id_version_formulario = :id"
+            )
+            .setParameter("id", version.getIdVersionFormulario())
+            .executeUpdate();
+
+        // 7. Intentar modificar la opcion publicada
+        assertThatThrownBy(() ->
+            entityManager.createNativeQuery(
+                    "UPDATE opcion_respuesta " +
+                        "SET texto = 'Respuesta modificada' " +
+                        "WHERE id_opcion = :id"
+                )
+                .setParameter("id", opcion.getIdOpcion())
+                .executeUpdate()
+        )
+            .hasStackTraceContaining(
+                "No se puede modificar una version publicada o retirada"
+            );
+    }
+
+    @Test
+    void debeImpedirVersionesDuplicadasDelMismoTest() {
+
+        // 1. Crear un test
+        TestJpaEntity test = testRepository.saveAndFlush(
+            new TestJpaEntity(
+                "DUPLICADO_" + UUID.randomUUID(),
+                "Test de versiones duplicadas",
+                "Prueba de restriccion UNIQUE",
+                true
+            )
+        );
+
+        // 2. Guardar la primera version v1
+        VersionFormularioJpaEntity version1 =
+            new VersionFormularioJpaEntity(
+                test,
+                "v1",
+                "Primera version",
+                "FUENTE-001"
+            );
+
+        versionRepository.saveAndFlush(version1);
+
+        // 3. Intentar guardar otra version con el mismo codigo
+        VersionFormularioJpaEntity versionDuplicada =
+            new VersionFormularioJpaEntity(
+                test,
+                "v1",
+                "Version duplicada",
+                "FUENTE-002"
+            );
+
+        // 4. PostgreSQL debe rechazar el duplicado
+        assertThatThrownBy(() ->
+            versionRepository.saveAndFlush(versionDuplicada)
+        )
+            .hasStackTraceContaining("uq_version_test_codigo");
+    }
+
+
+    @Test
+    void debeImpedirSubpruebaDeOtroTestEnUnaVersion() {
+
+        // 1. Crear dos tests diferentes
+        TestJpaEntity testA = testRepository.saveAndFlush(
+            new TestJpaEntity(
+                "TEST_A_" + UUID.randomUUID(),
+                "Test A",
+                "Primer instrumento de prueba",
+                true
+            )
+        );
+
+        TestJpaEntity testB = testRepository.saveAndFlush(
+            new TestJpaEntity(
+                "TEST_B_" + UUID.randomUUID(),
+                "Test B",
+                "Segundo instrumento de prueba",
+                true
+            )
+        );
+
+        // 2. Crear una subprueba perteneciente al Test B
+        SubpruebaJpaEntity subpruebaB =
+            subpruebaRepository.saveAndFlush(
+                new SubpruebaJpaEntity(
+                    testB,
+                    "SUB_B",
+                    "Subprueba del Test B",
+                    "Subprueba para verificar integridad"
+                )
+            );
+
+        // 3. Crear una version perteneciente al Test A
+        VersionFormularioJpaEntity versionA =
+            versionRepository.saveAndFlush(
+                new VersionFormularioJpaEntity(
+                    testA,
+                    "v1",
+                    "Version del Test A",
+                    "FUENTE-TEST-A"
+                )
+            );
+
+        // 4. Crear una configuracion incompatible
+        ConfiguracionSubpruebaJpaEntity configuracionInvalida =
+            new ConfiguracionSubpruebaJpaEntity(
+                versionA,
+                subpruebaB,
+                1,
+                null,
+                TipoRespuesta.SELECCION,
+                "Instrucciones de prueba",
+                null,
+                null
+            );
+
+        // 5. PostgreSQL debe impedir esta asociacion
+        assertThatThrownBy(() -> {
+            entityManager.persist(configuracionInvalida);
+            entityManager.flush();
+        })
+            .hasStackTraceContaining(
+                "La subprueba no pertenece al mismo test que la version"
+            );
+    }
+
+    @Test
+    void debeImpedirOpcionesEnPreguntasDeTextoLibre() {
+
+        // 1. Crear un test
+        TestJpaEntity test = testRepository.saveAndFlush(
+            new TestJpaEntity(
+                "TEXTO_LIBRE_" + UUID.randomUUID(),
+                "Test de respuestas abiertas",
+                "Prueba de integridad de opciones",
+                true
+            )
+        );
+
+        // 2. Crear una subprueba
+        SubpruebaJpaEntity subprueba =
+            subpruebaRepository.saveAndFlush(
+                new SubpruebaJpaEntity(
+                    test,
+                    "SUB_TEXTO",
+                    "Subprueba de texto libre",
+                    "Evaluacion con respuestas abiertas"
+                )
+            );
+
+        // 3. Crear una version en borrador
+        VersionFormularioJpaEntity version =
+            versionRepository.saveAndFlush(
+                new VersionFormularioJpaEntity(
+                    test,
+                    "v1",
+                    "Version de texto libre",
+                    "FUENTE-TEXTO"
+                )
+            );
+
+        // 4. Crear configuracion de tipo TEXTO_LIBRE
+        ConfiguracionSubpruebaJpaEntity configuracion =
+            new ConfiguracionSubpruebaJpaEntity(
+                version,
+                subprueba,
+                1,
+                null,
+                TipoRespuesta.TEXTO_LIBRE,
+                "Escriba su respuesta",
+                null,
+                null
+            );
+
+        entityManager.persist(configuracion);
+
+        // 5. Crear una pregunta abierta
+        PreguntaJpaEntity pregunta = new PreguntaJpaEntity(
+            configuracion,
+            "1",
+            1,
+            "Explique su respuesta",
+            null
+        );
+
+        entityManager.persist(pregunta);
+        entityManager.flush();
+
+        // 6. Intentar agregar una opcion a la pregunta abierta
+        OpcionRespuestaJpaEntity opcionInvalida =
+            new OpcionRespuestaJpaEntity(
+                pregunta,
+                "A",
+                1,
+                "Opcion no permitida",
+                null
+            );
+
+        // 7. PostgreSQL debe rechazar la opcion
+        assertThatThrownBy(() -> {
+            entityManager.persist(opcionInvalida);
+            entityManager.flush();
+        })
+            .hasStackTraceContaining(
+                "Las opciones solo pertenecen a preguntas de seleccion"
+            );
+    }
+
+
+
 }
