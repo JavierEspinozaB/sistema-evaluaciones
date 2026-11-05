@@ -1,4 +1,3 @@
-
 package com.universidad.tests.infrastructure.persistence.entity;
 
 import jakarta.persistence.Column;
@@ -41,40 +40,34 @@ public class OpcionRespuestaJpaEntity {
     }
 
     public OpcionRespuestaJpaEntity(
-        PreguntaJpaEntity pregunta,
-        String codigo,
-        int ordenPresentacion,
-        String texto,
-        String recursoRef) {
+            PreguntaJpaEntity pregunta,
+            String codigo,
+            int ordenPresentacion,
+            String texto,
+            String recursoRef) {
 
         if (pregunta == null) {
-            throw new IllegalArgumentException(
-                "La opcion debe pertenecer a una pregunta");
+            throw new IllegalArgumentException("La opcion debe pertenecer a una pregunta");
         }
 
         if (codigo == null || codigo.isBlank()) {
-            throw new IllegalArgumentException(
-                "El codigo de la opcion es obligatorio");
+            throw new IllegalArgumentException("El codigo de la opcion es obligatorio");
         }
 
         if (ordenPresentacion <= 0) {
-            throw new IllegalArgumentException(
-                "El orden de presentacion debe ser positivo");
+            throw new IllegalArgumentException("El orden de presentacion debe ser positivo");
         }
 
         if (texto != null && texto.isBlank()) {
-            throw new IllegalArgumentException(
-                "El texto de la opcion no puede estar vacio");
+            throw new IllegalArgumentException("El texto de la opcion no puede estar vacio");
         }
 
         if (recursoRef != null && recursoRef.isBlank()) {
-            throw new IllegalArgumentException(
-                "La referencia del recurso no puede estar vacia");
+            throw new IllegalArgumentException("La referencia del recurso no puede estar vacia");
         }
 
         if (texto == null && recursoRef == null) {
-            throw new IllegalArgumentException(
-                "La opcion necesita texto o un recurso");
+            throw new IllegalArgumentException("La opcion necesita texto o un recurso");
         }
 
         this.pregunta = pregunta;
@@ -116,32 +109,23 @@ public class OpcionRespuestaJpaEntity {
         return recursoRef != null;
     }
 
-
     public void actualizarDatos(
-        String codigo,
-        int ordenPresentacion,
-        String texto,
-        String recursoRef) {
+            String codigo, int ordenPresentacion, String texto, String recursoRef) {
 
         if (codigo == null || codigo.isBlank()) {
-            throw new IllegalArgumentException(
-                "El codigo de la opcion es obligatorio");
+            throw new IllegalArgumentException("El codigo de la opcion es obligatorio");
         }
 
         if (ordenPresentacion <= 0) {
-            throw new IllegalArgumentException(
-                "El orden de presentacion debe ser positivo");
+            throw new IllegalArgumentException("El orden de presentacion debe ser positivo");
         }
 
-        boolean sinTexto =
-            texto == null || texto.isBlank();
+        boolean sinTexto = texto == null || texto.isBlank();
 
-        boolean sinRecurso =
-            recursoRef == null || recursoRef.isBlank();
+        boolean sinRecurso = recursoRef == null || recursoRef.isBlank();
 
         if (sinTexto && sinRecurso) {
-            throw new IllegalArgumentException(
-                "La opcion necesita texto o un recurso");
+            throw new IllegalArgumentException("La opcion necesita texto o un recurso");
         }
 
         this.codigo = codigo;
@@ -149,6 +133,4 @@ public class OpcionRespuestaJpaEntity {
         this.texto = texto;
         this.recursoRef = recursoRef;
     }
-
-
 }

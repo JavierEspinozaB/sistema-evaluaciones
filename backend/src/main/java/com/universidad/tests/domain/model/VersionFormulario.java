@@ -1,4 +1,3 @@
-
 package com.universidad.tests.domain.model;
 
 import java.time.Instant;
@@ -16,23 +15,21 @@ public class VersionFormulario {
     private String evidenciaValidacion;
 
     public VersionFormulario(
-        Long idVersionFormulario,
-        Long idTest,
-        String codigoVersion,
-        String descripcion,
-        String fuenteRef) {
+            Long idVersionFormulario,
+            Long idTest,
+            String codigoVersion,
+            String descripcion,
+            String fuenteRef) {
 
         if (idTest == null || idTest <= 0) {
-            throw new IllegalArgumentException(
-                "La version debe pertenecer a un test valido");
+            throw new IllegalArgumentException("La version debe pertenecer a un test valido");
         }
 
         validarTexto(codigoVersion, "codigoVersion");
         validarTexto(fuenteRef, "fuenteRef");
 
         if (descripcion != null && descripcion.isBlank()) {
-            throw new IllegalArgumentException(
-                "La descripcion no puede estar vacia");
+            throw new IllegalArgumentException("La descripcion no puede estar vacia");
         }
 
         this.idVersionFormulario = idVersionFormulario;
@@ -49,8 +46,7 @@ public class VersionFormulario {
     private static void validarTexto(String valor, String campo) {
 
         if (valor == null || valor.isBlank()) {
-            throw new IllegalArgumentException(
-                "El campo " + campo + " es obligatorio");
+            throw new IllegalArgumentException("El campo " + campo + " es obligatorio");
         }
     }
 
@@ -58,8 +54,7 @@ public class VersionFormulario {
     public void publicar(String evidenciaValidacion) {
 
         if (this.estado != EstadoVersionFormulario.BORRADOR) {
-            throw new IllegalStateException(
-                "Solo se puede publicar una version en BORRADOR");
+            throw new IllegalStateException("Solo se puede publicar una version en BORRADOR");
         }
 
         validarTexto(evidenciaValidacion, "evidenciaValidacion");
@@ -73,8 +68,7 @@ public class VersionFormulario {
     public void retirar() {
 
         if (this.estado != EstadoVersionFormulario.PUBLICADA) {
-            throw new IllegalStateException(
-                "Solo se puede retirar una version PUBLICADA");
+            throw new IllegalStateException("Solo se puede retirar una version PUBLICADA");
         }
 
         this.estado = EstadoVersionFormulario.RETIRADA;
@@ -124,48 +118,37 @@ public class VersionFormulario {
 
     // Reconstruir una version existente desde PostgreSQL
     public static VersionFormulario restaurar(
-        Long idVersionFormulario,
-        Long idTest,
-        String codigoVersion,
-        String descripcion,
-        String fuenteRef,
-        EstadoVersionFormulario estado,
-        Instant publicadaEn,
-        String evidenciaValidacion) {
+            Long idVersionFormulario,
+            Long idTest,
+            String codigoVersion,
+            String descripcion,
+            String fuenteRef,
+            EstadoVersionFormulario estado,
+            Instant publicadaEn,
+            String evidenciaValidacion) {
 
         if (estado == null) {
-            throw new IllegalArgumentException(
-                "El estado de la version es obligatorio");
+            throw new IllegalArgumentException("El estado de la version es obligatorio");
         }
 
         if (estado != EstadoVersionFormulario.BORRADOR) {
 
             if (publicadaEn == null) {
                 throw new IllegalArgumentException(
-                    "Una version publicada o retirada "
-                        + "debe tener fecha de publicacion");
+                        "Una version publicada o retirada " + "debe tener fecha de publicacion");
             }
 
-            validarTexto(
-                evidenciaValidacion,
-                "evidenciaValidacion"
-            );
+            validarTexto(evidenciaValidacion, "evidenciaValidacion");
 
-        } else if (publicadaEn != null
-            || evidenciaValidacion != null) {
+        } else if (publicadaEn != null || evidenciaValidacion != null) {
 
             throw new IllegalArgumentException(
-                "Una version en BORRADOR no debe tener "
-                    + "datos de publicacion");
+                    "Una version en BORRADOR no debe tener " + "datos de publicacion");
         }
 
-        VersionFormulario version = new VersionFormulario(
-            idVersionFormulario,
-            idTest,
-            codigoVersion,
-            descripcion,
-            fuenteRef
-        );
+        VersionFormulario version =
+                new VersionFormulario(
+                        idVersionFormulario, idTest, codigoVersion, descripcion, fuenteRef);
 
         version.estado = estado;
         version.publicadaEn = publicadaEn;

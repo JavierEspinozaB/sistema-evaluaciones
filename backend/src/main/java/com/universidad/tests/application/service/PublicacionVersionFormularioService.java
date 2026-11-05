@@ -1,7 +1,4 @@
-
 package com.universidad.tests.application.service;
-
-import com.universidad.tests.domain.port.AutorizacionContenidoPort;
 
 import com.universidad.tests.domain.model.ConfiguracionSubprueba;
 import com.universidad.tests.domain.model.EstadoVersionFormulario;
@@ -9,13 +6,11 @@ import com.universidad.tests.domain.model.Pregunta;
 import com.universidad.tests.domain.model.Subprueba;
 import com.universidad.tests.domain.model.TipoRespuesta;
 import com.universidad.tests.domain.model.VersionFormulario;
-
+import com.universidad.tests.domain.port.AutorizacionContenidoPort;
 import com.universidad.tests.domain.repository.*;
-
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,12 +25,12 @@ public class PublicacionVersionFormularioService {
     private final AutorizacionContenidoPort autorizacion;
 
     public PublicacionVersionFormularioService(
-        VersionFormularioRepository versionRepository,
-        ConfiguracionSubpruebaRepository configuracionRepository,
-        SubpruebaRepository subpruebaRepository,
-        PreguntaRepository preguntaRepository,
-        OpcionRespuestaRepository opcionRepository,
-        AutorizacionContenidoPort autorizacion) {
+            VersionFormularioRepository versionRepository,
+            ConfiguracionSubpruebaRepository configuracionRepository,
+            SubpruebaRepository subpruebaRepository,
+            PreguntaRepository preguntaRepository,
+            OpcionRespuestaRepository opcionRepository,
+            AutorizacionContenidoPort autorizacion) {
 
         this.versionRepository = versionRepository;
         this.configuracionRepository = configuracionRepository;
@@ -46,9 +41,7 @@ public class PublicacionVersionFormularioService {
     }
 
     @Transactional
-    public VersionFormulario publicar(
-        Long idVersionFormulario,
-        String evidenciaValidacion) {
+    public VersionFormulario publicar(Long idVersionFormulario, String evidenciaValidacion) {
 
         validarId(idVersionFormulario);
 
@@ -57,18 +50,14 @@ public class PublicacionVersionFormularioService {
 
         VersionFormulario version = buscarVersion(idVersionFormulario);
 
-        if (version.getEstado()
-            != EstadoVersionFormulario.BORRADOR) {
+        if (version.getEstado() != EstadoVersionFormulario.BORRADOR) {
 
-            throw new IllegalStateException(
-                "Solo se puede publicar una version en BORRADOR");
+            throw new IllegalStateException("Solo se puede publicar una version en BORRADOR");
         }
 
-        if (evidenciaValidacion == null
-            || evidenciaValidacion.isBlank()) {
+        if (evidenciaValidacion == null || evidenciaValidacion.isBlank()) {
 
-            throw new IllegalArgumentException(
-                "La evidencia de validacion es obligatoria");
+            throw new IllegalArgumentException("La evidencia de validacion es obligatoria");
         }
 
         // Comprobar que el formulario tenga contenido valido.
@@ -90,11 +79,9 @@ public class PublicacionVersionFormularioService {
 
         VersionFormulario version = buscarVersion(idVersionFormulario);
 
-        if (version.getEstado()
-            != EstadoVersionFormulario.PUBLICADA) {
+        if (version.getEstado() != EstadoVersionFormulario.PUBLICADA) {
 
-            throw new IllegalStateException(
-                "Solo se puede retirar una version PUBLICADA");
+            throw new IllegalStateException("Solo se puede retirar una version PUBLICADA");
         }
 
         version.retirar();
@@ -107,60 +94,51 @@ public class PublicacionVersionFormularioService {
         Long idVersion = version.getIdVersionFormulario();
 
         List<ConfiguracionSubprueba> configuraciones =
-            configuracionRepository.listarPorVersion(idVersion);
+                configuracionRepository.listarPorVersion(idVersion);
 
         if (configuraciones.isEmpty()) {
 
-            throw new IllegalStateException(
-                "No se puede publicar una version sin subpruebas");
+            throw new IllegalStateException("No se puede publicar una version sin subpruebas");
         }
 
         for (ConfiguracionSubprueba configuracion : configuraciones) {
 
-            Subprueba subprueba = subpruebaRepository
-                .buscarPorId(configuracion.getIdSubprueba())
-                .orElseThrow(() ->
-                    new NoSuchElementException(
-                        "No existe una subprueba de la configuracion")
-                );
+            Subprueba subprueba =
+                    subpruebaRepository
+                            .buscarPorId(configuracion.getIdSubprueba())
+                            .orElseThrow(
+                                    () ->
+                                            new NoSuchElementException(
+                                                    "No existe una subprueba de la configuracion"));
 
             // Comprobar que pertenece al mismo test.
-            if (!Objects.equals(
-                subprueba.getIdTest(),
-                version.getIdTest())) {
+            if (!Objects.equals(subprueba.getIdTest(), version.getIdTest())) {
 
-                throw new IllegalStateException(
-                    "Una subprueba pertenece a otro test");
+                throw new IllegalStateException("Una subprueba pertenece a otro test");
             }
 
             // Recuperar preguntas de la configuracion.
             List<Pregunta> preguntas =
-                preguntaRepository.listarPorConfiguracion(
-                    configuracion.getIdConfiguracionSubprueba()
-                );
+                    preguntaRepository.listarPorConfiguracion(
+                            configuracion.getIdConfiguracionSubprueba());
 
             if (preguntas.isEmpty()) {
 
                 throw new IllegalStateException(
-                    "La subprueba "
-                        + subprueba.getCodigo()
-                        + " no contiene preguntas");
+                        "La subprueba " + subprueba.getCodigo() + " no contiene preguntas");
             }
 
             // Las preguntas de seleccion necesitan opciones.
-            if (configuracion.getTipoRespuesta()
-                == TipoRespuesta.SELECCION) {
+            if (configuracion.getTipoRespuesta() == TipoRespuesta.SELECCION) {
 
                 for (Pregunta pregunta : preguntas) {
 
-                    if (opcionRepository
-                        .listarPorPregunta(pregunta.getIdPregunta())
-                        .isEmpty()) {
+                    if (opcionRepository.listarPorPregunta(pregunta.getIdPregunta()).isEmpty()) {
 
                         throw new IllegalStateException(
-                            "La pregunta "
-                                + pregunta.getNumeroVisible()
-                                + " no contiene opciones");
+                                "La pregunta "
+                                        + pregunta.getNumeroVisible()
+                                        + " no contiene opciones");
                     }
                 }
             }
@@ -169,21 +147,19 @@ public class PublicacionVersionFormularioService {
 
     private VersionFormulario buscarVersion(Long idVersionFormulario) {
 
-        return versionRepository.buscarPorId(idVersionFormulario)
-            .orElseThrow(() ->
-                new NoSuchElementException(
-                    "No existe la version con ID: "
-                        + idVersionFormulario)
-            );
+        return versionRepository
+                .buscarPorId(idVersionFormulario)
+                .orElseThrow(
+                        () ->
+                                new NoSuchElementException(
+                                        "No existe la version con ID: " + idVersionFormulario));
     }
 
     private void validarId(Long idVersionFormulario) {
 
-        if (idVersionFormulario == null
-            || idVersionFormulario <= 0) {
+        if (idVersionFormulario == null || idVersionFormulario <= 0) {
 
-            throw new IllegalArgumentException(
-                "El ID de version debe ser positivo");
+            throw new IllegalArgumentException("El ID de version debe ser positivo");
         }
     }
 }

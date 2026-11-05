@@ -1,4 +1,3 @@
-
 package com.universidad.tests.domain.model;
 
 public class OpcionRespuesta {
@@ -11,41 +10,35 @@ public class OpcionRespuesta {
     private final String recursoRef;
 
     public OpcionRespuesta(
-        Long idOpcion,
-        Long idPregunta,
-        String codigo,
-        int ordenPresentacion,
-        String texto,
-        String recursoRef) {
+            Long idOpcion,
+            Long idPregunta,
+            String codigo,
+            int ordenPresentacion,
+            String texto,
+            String recursoRef) {
 
         if (idPregunta == null) {
-            throw new IllegalArgumentException(
-                "La opcion debe pertenecer a una pregunta");
+            throw new IllegalArgumentException("La opcion debe pertenecer a una pregunta");
         }
 
         if (codigo == null || codigo.isBlank()) {
-            throw new IllegalArgumentException(
-                "El codigo de la opcion es obligatorio");
+            throw new IllegalArgumentException("El codigo de la opcion es obligatorio");
         }
 
         if (ordenPresentacion <= 0) {
-            throw new IllegalArgumentException(
-                "El orden de presentacion debe ser positivo");
+            throw new IllegalArgumentException("El orden de presentacion debe ser positivo");
         }
 
         if (texto != null && texto.isBlank()) {
-            throw new IllegalArgumentException(
-                "El texto de la opcion no puede estar vacio");
+            throw new IllegalArgumentException("El texto de la opcion no puede estar vacio");
         }
 
         if (recursoRef != null && recursoRef.isBlank()) {
-            throw new IllegalArgumentException(
-                "La referencia del recurso no puede estar vacia");
+            throw new IllegalArgumentException("La referencia del recurso no puede estar vacia");
         }
 
         if (texto == null && recursoRef == null) {
-            throw new IllegalArgumentException(
-                "La opcion necesita texto o recurso");
+            throw new IllegalArgumentException("La opcion necesita texto o recurso");
         }
 
         this.idOpcion = idOpcion;

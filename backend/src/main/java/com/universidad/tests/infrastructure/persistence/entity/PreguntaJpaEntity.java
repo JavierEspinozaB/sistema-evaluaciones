@@ -1,4 +1,3 @@
-
 package com.universidad.tests.infrastructure.persistence.entity;
 
 import jakarta.persistence.Column;
@@ -21,9 +20,7 @@ public class PreguntaJpaEntity {
     private Long idPregunta;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(
-        name = "id_configuracion_subprueba",
-        nullable = false)
+    @JoinColumn(name = "id_configuracion_subprueba", nullable = false)
     private ConfiguracionSubpruebaJpaEntity configuracionSubprueba;
 
     @Column(name = "numero_visible", nullable = false, length = 40)
@@ -43,40 +40,34 @@ public class PreguntaJpaEntity {
     }
 
     public PreguntaJpaEntity(
-        ConfiguracionSubpruebaJpaEntity configuracionSubprueba,
-        String numeroVisible,
-        int ordenPresentacion,
-        String enunciado,
-        String recursoRef) {
+            ConfiguracionSubpruebaJpaEntity configuracionSubprueba,
+            String numeroVisible,
+            int ordenPresentacion,
+            String enunciado,
+            String recursoRef) {
 
         if (configuracionSubprueba == null) {
-            throw new IllegalArgumentException(
-                "La pregunta debe pertenecer a una configuracion");
+            throw new IllegalArgumentException("La pregunta debe pertenecer a una configuracion");
         }
 
         if (numeroVisible == null || numeroVisible.isBlank()) {
-            throw new IllegalArgumentException(
-                "El numero visible es obligatorio");
+            throw new IllegalArgumentException("El numero visible es obligatorio");
         }
 
         if (ordenPresentacion <= 0) {
-            throw new IllegalArgumentException(
-                "El orden de presentacion debe ser positivo");
+            throw new IllegalArgumentException("El orden de presentacion debe ser positivo");
         }
 
         if (enunciado != null && enunciado.isBlank()) {
-            throw new IllegalArgumentException(
-                "El enunciado no puede estar vacio");
+            throw new IllegalArgumentException("El enunciado no puede estar vacio");
         }
 
         if (recursoRef != null && recursoRef.isBlank()) {
-            throw new IllegalArgumentException(
-                "La referencia del recurso no puede estar vacia");
+            throw new IllegalArgumentException("La referencia del recurso no puede estar vacia");
         }
 
         if (enunciado == null && recursoRef == null) {
-            throw new IllegalArgumentException(
-                "La pregunta necesita un enunciado o recurso");
+            throw new IllegalArgumentException("La pregunta necesita un enunciado o recurso");
         }
 
         this.configuracionSubprueba = configuracionSubprueba;
@@ -118,32 +109,23 @@ public class PreguntaJpaEntity {
         return recursoRef != null;
     }
 
-
     public void actualizarDatos(
-        String numeroVisible,
-        int ordenPresentacion,
-        String enunciado,
-        String recursoRef) {
+            String numeroVisible, int ordenPresentacion, String enunciado, String recursoRef) {
 
         if (numeroVisible == null || numeroVisible.isBlank()) {
-            throw new IllegalArgumentException(
-                "El numero visible es obligatorio");
+            throw new IllegalArgumentException("El numero visible es obligatorio");
         }
 
         if (ordenPresentacion <= 0) {
-            throw new IllegalArgumentException(
-                "El orden de presentacion debe ser positivo");
+            throw new IllegalArgumentException("El orden de presentacion debe ser positivo");
         }
 
-        boolean sinEnunciado =
-            enunciado == null || enunciado.isBlank();
+        boolean sinEnunciado = enunciado == null || enunciado.isBlank();
 
-        boolean sinRecurso =
-            recursoRef == null || recursoRef.isBlank();
+        boolean sinRecurso = recursoRef == null || recursoRef.isBlank();
 
         if (sinEnunciado && sinRecurso) {
-            throw new IllegalArgumentException(
-                "La pregunta necesita un enunciado o recurso");
+            throw new IllegalArgumentException("La pregunta necesita un enunciado o recurso");
         }
 
         this.numeroVisible = numeroVisible;
@@ -151,5 +133,4 @@ public class PreguntaJpaEntity {
         this.enunciado = enunciado;
         this.recursoRef = recursoRef;
     }
-
 }

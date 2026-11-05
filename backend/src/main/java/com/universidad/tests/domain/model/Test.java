@@ -1,4 +1,3 @@
-
 package com.universidad.tests.domain.model;
 
 public class Test {
@@ -9,8 +8,7 @@ public class Test {
     private String descripcion;
     private boolean activo;
 
-    public Test(Long idTest, String codigo, String nombre,
-                String descripcion, boolean activo) {
+    public Test(Long idTest, String codigo, String nombre, String descripcion, boolean activo) {
         this.idTest = idTest;
         setCodigo(codigo);
         setNombre(nombre);
@@ -28,9 +26,7 @@ public class Test {
 
     public void setCodigo(String codigo) {
         if (codigo == null || codigo.isBlank()) {
-            throw new IllegalArgumentException(
-                "El codigo del test es obligatorio"
-            );
+            throw new IllegalArgumentException("El codigo del test es obligatorio");
         }
         this.codigo = codigo;
     }
@@ -41,9 +37,7 @@ public class Test {
 
     public void setNombre(String nombre) {
         if (nombre == null || nombre.isBlank()) {
-            throw new IllegalArgumentException(
-                "El nombre del test es obligatorio"
-            );
+            throw new IllegalArgumentException("El nombre del test es obligatorio");
         }
         this.nombre = nombre;
     }
@@ -54,9 +48,7 @@ public class Test {
 
     public void setDescripcion(String descripcion) {
         if (descripcion != null && descripcion.isBlank()) {
-            throw new IllegalArgumentException(
-                "La descripcion no puede estar vacia"
-            );
+            throw new IllegalArgumentException("La descripcion no puede estar vacia");
         }
         this.descripcion = descripcion;
     }

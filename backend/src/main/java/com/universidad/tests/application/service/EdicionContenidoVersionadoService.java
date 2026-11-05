@@ -1,22 +1,17 @@
-
 package com.universidad.tests.application.service;
-
-import com.universidad.tests.domain.port.AutorizacionContenidoPort;
 
 import com.universidad.tests.domain.model.ConfiguracionSubprueba;
 import com.universidad.tests.domain.model.EstadoVersionFormulario;
 import com.universidad.tests.domain.model.OpcionRespuesta;
 import com.universidad.tests.domain.model.Pregunta;
 import com.universidad.tests.domain.model.VersionFormulario;
-
+import com.universidad.tests.domain.port.AutorizacionContenidoPort;
 import com.universidad.tests.domain.repository.ConfiguracionSubpruebaRepository;
 import com.universidad.tests.domain.repository.OpcionRespuestaRepository;
+import com.universidad.tests.domain.repository.PreguntaRepository;
 import com.universidad.tests.domain.repository.VersionFormularioRepository;
-
 import java.util.NoSuchElementException;
 import java.util.Objects;
-
-import com.universidad.tests.domain.repository.PreguntaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,11 +25,11 @@ public class EdicionContenidoVersionadoService {
     private final AutorizacionContenidoPort autorizacion;
 
     public EdicionContenidoVersionadoService(
-        VersionFormularioRepository versionRepository,
-        ConfiguracionSubpruebaRepository configuracionRepository,
-        PreguntaRepository preguntaRepository,
-        OpcionRespuestaRepository opcionRepository,
-        AutorizacionContenidoPort autorizacion) {
+            VersionFormularioRepository versionRepository,
+            ConfiguracionSubpruebaRepository configuracionRepository,
+            PreguntaRepository preguntaRepository,
+            OpcionRespuestaRepository opcionRepository,
+            AutorizacionContenidoPort autorizacion) {
 
         this.versionRepository = versionRepository;
         this.configuracionRepository = configuracionRepository;
@@ -44,12 +39,10 @@ public class EdicionContenidoVersionadoService {
     }
 
     @Transactional
-    public ConfiguracionSubprueba guardarConfiguracion(
-        ConfiguracionSubprueba configuracion) {
+    public ConfiguracionSubprueba guardarConfiguracion(ConfiguracionSubprueba configuracion) {
 
         if (configuracion == null) {
-            throw new IllegalArgumentException(
-                "La configuracion es obligatoria");
+            throw new IllegalArgumentException("La configuracion es obligatoria");
         }
 
         Long idVersion = configuracion.getIdVersionFormulario();
@@ -58,18 +51,17 @@ public class EdicionContenidoVersionadoService {
 
         if (configuracion.getIdConfiguracionSubprueba() != null) {
 
-            ConfiguracionSubprueba existente = configuracionRepository
-                .buscarPorId(configuracion.getIdConfiguracionSubprueba())
-                .orElseThrow(() -> new NoSuchElementException(
-                    "No existe la configuracion indicada"));
+            ConfiguracionSubprueba existente =
+                    configuracionRepository
+                            .buscarPorId(configuracion.getIdConfiguracionSubprueba())
+                            .orElseThrow(
+                                    () ->
+                                            new NoSuchElementException(
+                                                    "No existe la configuracion indicada"));
 
-            validarMismaRelacion(
-                existente.getIdVersionFormulario(),
-                idVersion);
+            validarMismaRelacion(existente.getIdVersionFormulario(), idVersion);
 
-            validarMismaRelacion(
-                existente.getIdSubprueba(),
-                configuracion.getIdSubprueba());
+            validarMismaRelacion(existente.getIdSubprueba(), configuracion.getIdSubprueba());
         }
 
         validarBorrador(buscarVersion(idVersion));
@@ -81,12 +73,11 @@ public class EdicionContenidoVersionadoService {
     public Pregunta guardarPregunta(Pregunta pregunta) {
 
         if (pregunta == null) {
-            throw new IllegalArgumentException(
-                "La pregunta es obligatoria");
+            throw new IllegalArgumentException("La pregunta es obligatoria");
         }
 
-        ConfiguracionSubprueba configuracion = buscarConfiguracion(
-            pregunta.getIdConfiguracionSubprueba());
+        ConfiguracionSubprueba configuracion =
+                buscarConfiguracion(pregunta.getIdConfiguracionSubprueba());
 
         Long idVersion = configuracion.getIdVersionFormulario();
 
@@ -94,14 +85,17 @@ public class EdicionContenidoVersionadoService {
 
         if (pregunta.getIdPregunta() != null) {
 
-            Pregunta existente = preguntaRepository
-                .buscarPorId(pregunta.getIdPregunta())
-                .orElseThrow(() -> new NoSuchElementException(
-                    "No existe la pregunta indicada"));
+            Pregunta existente =
+                    preguntaRepository
+                            .buscarPorId(pregunta.getIdPregunta())
+                            .orElseThrow(
+                                    () ->
+                                            new NoSuchElementException(
+                                                    "No existe la pregunta indicada"));
 
             validarMismaRelacion(
-                existente.getIdConfiguracionSubprueba(),
-                pregunta.getIdConfiguracionSubprueba());
+                    existente.getIdConfiguracionSubprueba(),
+                    pregunta.getIdConfiguracionSubprueba());
         }
 
         validarBorrador(buscarVersion(idVersion));
@@ -113,14 +107,13 @@ public class EdicionContenidoVersionadoService {
     public OpcionRespuesta guardarOpcion(OpcionRespuesta opcion) {
 
         if (opcion == null) {
-            throw new IllegalArgumentException(
-                "La opcion de respuesta es obligatoria");
+            throw new IllegalArgumentException("La opcion de respuesta es obligatoria");
         }
 
         Pregunta pregunta = buscarPregunta(opcion.getIdPregunta());
 
-        ConfiguracionSubprueba configuracion = buscarConfiguracion(
-            pregunta.getIdConfiguracionSubprueba());
+        ConfiguracionSubprueba configuracion =
+                buscarConfiguracion(pregunta.getIdConfiguracionSubprueba());
 
         Long idVersion = configuracion.getIdVersionFormulario();
 
@@ -128,14 +121,15 @@ public class EdicionContenidoVersionadoService {
 
         if (opcion.getIdOpcion() != null) {
 
-            OpcionRespuesta existente = opcionRepository
-                .buscarPorId(opcion.getIdOpcion())
-                .orElseThrow(() -> new NoSuchElementException(
-                    "No existe la opcion indicada"));
+            OpcionRespuesta existente =
+                    opcionRepository
+                            .buscarPorId(opcion.getIdOpcion())
+                            .orElseThrow(
+                                    () ->
+                                            new NoSuchElementException(
+                                                    "No existe la opcion indicada"));
 
-            validarMismaRelacion(
-                existente.getIdPregunta(),
-                opcion.getIdPregunta());
+            validarMismaRelacion(existente.getIdPregunta(), opcion.getIdPregunta());
         }
 
         validarBorrador(buscarVersion(idVersion));
@@ -146,58 +140,53 @@ public class EdicionContenidoVersionadoService {
     private VersionFormulario buscarVersion(Long idVersion) {
 
         if (idVersion == null || idVersion <= 0) {
-            throw new IllegalArgumentException(
-                "El ID de version debe ser positivo");
+            throw new IllegalArgumentException("El ID de version debe ser positivo");
         }
 
-        return versionRepository.buscarPorId(idVersion)
-            .orElseThrow(() -> new NoSuchElementException(
-                "No existe la version con ID: " + idVersion));
+        return versionRepository
+                .buscarPorId(idVersion)
+                .orElseThrow(
+                        () ->
+                                new NoSuchElementException(
+                                        "No existe la version con ID: " + idVersion));
     }
 
-    private ConfiguracionSubprueba buscarConfiguracion(
-        Long idConfiguracion) {
+    private ConfiguracionSubprueba buscarConfiguracion(Long idConfiguracion) {
 
         if (idConfiguracion == null || idConfiguracion <= 0) {
-            throw new IllegalArgumentException(
-                "El ID de configuracion debe ser positivo");
+            throw new IllegalArgumentException("El ID de configuracion debe ser positivo");
         }
 
-        return configuracionRepository.buscarPorId(idConfiguracion)
-            .orElseThrow(() -> new NoSuchElementException(
-                "No existe la configuracion indicada"));
+        return configuracionRepository
+                .buscarPorId(idConfiguracion)
+                .orElseThrow(
+                        () -> new NoSuchElementException("No existe la configuracion indicada"));
     }
 
     private Pregunta buscarPregunta(Long idPregunta) {
 
         if (idPregunta == null || idPregunta <= 0) {
-            throw new IllegalArgumentException(
-                "El ID de pregunta debe ser positivo");
+            throw new IllegalArgumentException("El ID de pregunta debe ser positivo");
         }
 
-        return preguntaRepository.buscarPorId(idPregunta)
-            .orElseThrow(() -> new NoSuchElementException(
-                "No existe la pregunta indicada"));
+        return preguntaRepository
+                .buscarPorId(idPregunta)
+                .orElseThrow(() -> new NoSuchElementException("No existe la pregunta indicada"));
     }
 
-    private void validarMismaRelacion(
-        Long idExistente,
-        Long idSolicitado) {
+    private void validarMismaRelacion(Long idExistente, Long idSolicitado) {
 
         if (!Objects.equals(idExistente, idSolicitado)) {
-            throw new IllegalArgumentException(
-                "No se puede cambiar la relacion original");
+            throw new IllegalArgumentException("No se puede cambiar la relacion original");
         }
     }
 
     private void validarBorrador(VersionFormulario version) {
 
-        if (version.getEstado()
-            != EstadoVersionFormulario.BORRADOR) {
+        if (version.getEstado() != EstadoVersionFormulario.BORRADOR) {
 
             throw new IllegalStateException(
-                "Solo se puede editar contenido "
-                    + "de una version en BORRADOR");
+                    "Solo se puede editar contenido " + "de una version en BORRADOR");
         }
     }
 }

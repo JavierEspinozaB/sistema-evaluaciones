@@ -1,4 +1,3 @@
-
 package com.universidad.tests.infrastructure.persistence.entity;
 
 import com.universidad.tests.domain.model.EstadoVersionFormulario;
@@ -52,24 +51,18 @@ public class VersionFormularioJpaEntity {
     }
 
     public VersionFormularioJpaEntity(
-        TestJpaEntity test,
-        String codigoVersion,
-        String descripcion,
-        String fuenteRef) {
+            TestJpaEntity test, String codigoVersion, String descripcion, String fuenteRef) {
 
         if (test == null) {
-            throw new IllegalArgumentException(
-                "La version debe pertenecer a un test");
+            throw new IllegalArgumentException("La version debe pertenecer a un test");
         }
 
         if (codigoVersion == null || codigoVersion.isBlank()) {
-            throw new IllegalArgumentException(
-                "El codigo de version es obligatorio");
+            throw new IllegalArgumentException("El codigo de version es obligatorio");
         }
 
         if (fuenteRef == null || fuenteRef.isBlank()) {
-            throw new IllegalArgumentException(
-                "La referencia de la fuente es obligatoria");
+            throw new IllegalArgumentException("La referencia de la fuente es obligatoria");
         }
 
         this.test = test;
@@ -115,15 +108,13 @@ public class VersionFormularioJpaEntity {
         return evidenciaValidacion;
     }
 
-
     public void aplicarEstado(
-        EstadoVersionFormulario nuevoEstado,
-        java.time.Instant fechaPublicacion,
-        String evidencia) {
+            EstadoVersionFormulario nuevoEstado,
+            java.time.Instant fechaPublicacion,
+            String evidencia) {
 
         if (nuevoEstado == null) {
-            throw new IllegalArgumentException(
-                "El estado es obligatorio");
+            throw new IllegalArgumentException("El estado es obligatorio");
         }
 
         if (this.estado == nuevoEstado) {
@@ -131,13 +122,10 @@ public class VersionFormularioJpaEntity {
         }
 
         if (this.estado == EstadoVersionFormulario.BORRADOR
-            && nuevoEstado == EstadoVersionFormulario.PUBLICADA) {
+                && nuevoEstado == EstadoVersionFormulario.PUBLICADA) {
 
-            if (fechaPublicacion == null
-                || evidencia == null
-                || evidencia.isBlank()) {
-                throw new IllegalArgumentException(
-                    "La publicacion requiere fecha y evidencia");
+            if (fechaPublicacion == null || evidencia == null || evidencia.isBlank()) {
+                throw new IllegalArgumentException("La publicacion requiere fecha y evidencia");
             }
 
             this.estado = EstadoVersionFormulario.PUBLICADA;
@@ -147,15 +135,13 @@ public class VersionFormularioJpaEntity {
         }
 
         if (this.estado == EstadoVersionFormulario.PUBLICADA
-            && nuevoEstado == EstadoVersionFormulario.RETIRADA) {
+                && nuevoEstado == EstadoVersionFormulario.RETIRADA) {
 
             this.estado = EstadoVersionFormulario.RETIRADA;
             return;
         }
 
         throw new IllegalStateException(
-            "Transicion de estado no permitida: "
-                + this.estado + " -> " + nuevoEstado);
+                "Transicion de estado no permitida: " + this.estado + " -> " + nuevoEstado);
     }
-
 }

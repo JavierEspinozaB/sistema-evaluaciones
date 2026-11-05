@@ -1,4 +1,3 @@
-
 package com.universidad.tests.infrastructure.security;
 
 import com.universidad.tests.domain.port.AutorizacionContenidoPort;
@@ -7,8 +6,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Profile("!seguridad-integrada")
-public class AutorizacionContenidoDenegadaAdapter
-    implements AutorizacionContenidoPort {
+public class AutorizacionContenidoDenegadaAdapter implements AutorizacionContenidoPort {
 
     @Override
     public void exigirPermisoCrearVersion(Long idTest) {
@@ -16,34 +14,29 @@ public class AutorizacionContenidoDenegadaAdapter
     }
 
     @Override
-    public void exigirPermisoEditarContenido(
-        Long idVersionFormulario) {
+    public void exigirPermisoEditarContenido(Long idVersionFormulario) {
         denegarAcceso();
     }
 
     @Override
-    public void exigirPermisoPublicar(
-        Long idVersionFormulario) {
+    public void exigirPermisoPublicar(Long idVersionFormulario) {
         denegarAcceso();
     }
 
     @Override
-    public void exigirPermisoRetirar(
-        Long idVersionFormulario) {
+    public void exigirPermisoRetirar(Long idVersionFormulario) {
         denegarAcceso();
     }
 
     @Override
-    public void exigirPermisoConsultarContenido(
-        Long idVersionFormulario) {
+    public void exigirPermisoConsultarContenido(Long idVersionFormulario) {
         denegarAcceso();
     }
 
     private void denegarAcceso() {
         throw new SecurityException(
-            "Operacion no autorizada: "
-                + "el mecanismo de autenticacion "
-                + "y permisos aun no esta configurado"
-        );
+                "Operacion no autorizada: "
+                        + "el mecanismo de autenticacion "
+                        + "y permisos aun no esta configurado");
     }
 }

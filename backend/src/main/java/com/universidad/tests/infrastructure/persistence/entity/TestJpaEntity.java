@@ -1,4 +1,3 @@
-
 package com.universidad.tests.infrastructure.persistence.entity;
 
 import jakarta.persistence.Column;
@@ -33,11 +32,7 @@ public class TestJpaEntity {
         // Constructor requerido por JPA
     }
 
-    public TestJpaEntity(
-        String codigo,
-        String nombre,
-        String descripcion,
-        boolean activo) {
+    public TestJpaEntity(String codigo, String nombre, String descripcion, boolean activo) {
 
         this.codigo = codigo;
         this.nombre = nombre;
@@ -65,20 +60,14 @@ public class TestJpaEntity {
         return activo;
     }
 
-    public void actualizarDatos(
-        String codigo,
-        String nombre,
-        String descripcion,
-        boolean activo) {
+    public void actualizarDatos(String codigo, String nombre, String descripcion, boolean activo) {
 
         if (codigo == null || codigo.isBlank()) {
-            throw new IllegalArgumentException(
-                "El codigo del test es obligatorio");
+            throw new IllegalArgumentException("El codigo del test es obligatorio");
         }
 
         if (nombre == null || nombre.isBlank()) {
-            throw new IllegalArgumentException(
-                "El nombre del test es obligatorio");
+            throw new IllegalArgumentException("El nombre del test es obligatorio");
         }
 
         this.codigo = codigo;
@@ -86,5 +75,4 @@ public class TestJpaEntity {
         this.descripcion = descripcion;
         this.activo = activo;
     }
-
 }

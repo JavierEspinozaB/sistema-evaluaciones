@@ -1,4 +1,3 @@
-
 package com.universidad.tests.infrastructure.persistence.entity;
 
 import com.universidad.tests.domain.model.TipoRespuesta;
@@ -41,10 +40,7 @@ public class ConfiguracionSubpruebaJpaEntity {
     @Column(name = "tipo_respuesta", nullable = false, length = 20)
     private TipoRespuesta tipoRespuesta;
 
-    @Column(
-        name = "instrucciones_ref",
-        nullable = false,
-        columnDefinition = "text")
+    @Column(name = "instrucciones_ref", nullable = false, columnDefinition = "text")
     private String instruccionesRef;
 
     @Column(name = "practica_ref", columnDefinition = "text")
@@ -58,61 +54,50 @@ public class ConfiguracionSubpruebaJpaEntity {
     }
 
     public ConfiguracionSubpruebaJpaEntity(
-        VersionFormularioJpaEntity versionFormulario,
-        SubpruebaJpaEntity subprueba,
-        int ordenAplicacion,
-        Integer tiempoLimiteSegundos,
-        TipoRespuesta tipoRespuesta,
-        String instruccionesRef,
-        String practicaRef,
-        Integer maximoEntradas) {
+            VersionFormularioJpaEntity versionFormulario,
+            SubpruebaJpaEntity subprueba,
+            int ordenAplicacion,
+            Integer tiempoLimiteSegundos,
+            TipoRespuesta tipoRespuesta,
+            String instruccionesRef,
+            String practicaRef,
+            Integer maximoEntradas) {
 
         if (versionFormulario == null) {
-            throw new IllegalArgumentException(
-                "La version del formulario es obligatoria");
+            throw new IllegalArgumentException("La version del formulario es obligatoria");
         }
 
         if (subprueba == null) {
-            throw new IllegalArgumentException(
-                "La subprueba es obligatoria");
+            throw new IllegalArgumentException("La subprueba es obligatoria");
         }
 
         if (ordenAplicacion <= 0) {
-            throw new IllegalArgumentException(
-                "El orden debe ser positivo");
+            throw new IllegalArgumentException("El orden debe ser positivo");
         }
 
-        if (tiempoLimiteSegundos != null
-            && tiempoLimiteSegundos <= 0) {
-            throw new IllegalArgumentException(
-                "El tiempo limite debe ser positivo");
+        if (tiempoLimiteSegundos != null && tiempoLimiteSegundos <= 0) {
+            throw new IllegalArgumentException("El tiempo limite debe ser positivo");
         }
 
         if (tipoRespuesta == null) {
-            throw new IllegalArgumentException(
-                "El tipo de respuesta es obligatorio");
+            throw new IllegalArgumentException("El tipo de respuesta es obligatorio");
         }
 
-        if (instruccionesRef == null
-            || instruccionesRef.isBlank()) {
-            throw new IllegalArgumentException(
-                "Las instrucciones son obligatorias");
+        if (instruccionesRef == null || instruccionesRef.isBlank()) {
+            throw new IllegalArgumentException("Las instrucciones son obligatorias");
         }
 
         if (practicaRef != null && practicaRef.isBlank()) {
-            throw new IllegalArgumentException(
-                "La referencia de practica no puede estar vacia");
+            throw new IllegalArgumentException("La referencia de practica no puede estar vacia");
         }
 
         if (maximoEntradas != null && maximoEntradas <= 0) {
-            throw new IllegalArgumentException(
-                "El maximo de entradas debe ser positivo");
+            throw new IllegalArgumentException("El maximo de entradas debe ser positivo");
         }
 
-        if (tipoRespuesta == TipoRespuesta.SELECCION
-            && maximoEntradas != null) {
+        if (tipoRespuesta == TipoRespuesta.SELECCION && maximoEntradas != null) {
             throw new IllegalArgumentException(
-                "Las respuestas de seleccion no utilizan maximoEntradas");
+                    "Las respuestas de seleccion no utilizan maximoEntradas");
         }
 
         this.versionFormulario = versionFormulario;
@@ -174,49 +159,39 @@ public class ConfiguracionSubpruebaJpaEntity {
     }
 
     public void actualizarDatos(
-        int ordenAplicacion,
-        Integer tiempoLimiteSegundos,
-        TipoRespuesta tipoRespuesta,
-        String instruccionesRef,
-        String practicaRef,
-        Integer maximoEntradas) {
+            int ordenAplicacion,
+            Integer tiempoLimiteSegundos,
+            TipoRespuesta tipoRespuesta,
+            String instruccionesRef,
+            String practicaRef,
+            Integer maximoEntradas) {
 
         if (ordenAplicacion <= 0) {
-            throw new IllegalArgumentException(
-                "El orden de aplicacion debe ser positivo");
+            throw new IllegalArgumentException("El orden de aplicacion debe ser positivo");
         }
 
-        if (tiempoLimiteSegundos != null
-            && tiempoLimiteSegundos <= 0) {
-            throw new IllegalArgumentException(
-                "El tiempo limite debe ser positivo");
+        if (tiempoLimiteSegundos != null && tiempoLimiteSegundos <= 0) {
+            throw new IllegalArgumentException("El tiempo limite debe ser positivo");
         }
 
         if (tipoRespuesta == null) {
-            throw new IllegalArgumentException(
-                "El tipo de respuesta es obligatorio");
+            throw new IllegalArgumentException("El tipo de respuesta es obligatorio");
         }
 
-        if (instruccionesRef == null
-            || instruccionesRef.isBlank()) {
-            throw new IllegalArgumentException(
-                "La referencia de instrucciones es obligatoria");
+        if (instruccionesRef == null || instruccionesRef.isBlank()) {
+            throw new IllegalArgumentException("La referencia de instrucciones es obligatoria");
         }
 
         if (practicaRef != null && practicaRef.isBlank()) {
-            throw new IllegalArgumentException(
-                "La referencia de practica no puede estar vacia");
+            throw new IllegalArgumentException("La referencia de practica no puede estar vacia");
         }
 
         if (maximoEntradas != null && maximoEntradas <= 0) {
-            throw new IllegalArgumentException(
-                "El maximo de entradas debe ser positivo");
+            throw new IllegalArgumentException("El maximo de entradas debe ser positivo");
         }
 
-        if (tipoRespuesta == TipoRespuesta.SELECCION
-            && maximoEntradas != null) {
-            throw new IllegalArgumentException(
-                "SELECCION no admite maximoEntradas");
+        if (tipoRespuesta == TipoRespuesta.SELECCION && maximoEntradas != null) {
+            throw new IllegalArgumentException("SELECCION no admite maximoEntradas");
         }
 
         this.ordenAplicacion = ordenAplicacion;
@@ -226,5 +201,4 @@ public class ConfiguracionSubpruebaJpaEntity {
         this.practicaRef = practicaRef;
         this.maximoEntradas = maximoEntradas;
     }
-
 }

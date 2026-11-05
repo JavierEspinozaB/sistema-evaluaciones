@@ -1,4 +1,3 @@
-
 package com.universidad.tests.domain.model;
 
 public class Pregunta {
@@ -11,46 +10,39 @@ public class Pregunta {
     private final String recursoRef;
 
     public Pregunta(
-        Long idPregunta,
-        Long idConfiguracionSubprueba,
-        String numeroVisible,
-        int ordenPresentacion,
-        String enunciado,
-        String recursoRef) {
+            Long idPregunta,
+            Long idConfiguracionSubprueba,
+            String numeroVisible,
+            int ordenPresentacion,
+            String enunciado,
+            String recursoRef) {
 
         if (idConfiguracionSubprueba == null) {
-            throw new IllegalArgumentException(
-                "La pregunta debe pertenecer a una configuracion");
+            throw new IllegalArgumentException("La pregunta debe pertenecer a una configuracion");
         }
 
         if (numeroVisible == null || numeroVisible.isBlank()) {
-            throw new IllegalArgumentException(
-                "El numero visible es obligatorio");
+            throw new IllegalArgumentException("El numero visible es obligatorio");
         }
 
         if (ordenPresentacion <= 0) {
-            throw new IllegalArgumentException(
-                "El orden de presentacion debe ser positivo");
+            throw new IllegalArgumentException("El orden de presentacion debe ser positivo");
         }
 
         if (enunciado != null && enunciado.isBlank()) {
-            throw new IllegalArgumentException(
-                "El enunciado no puede estar vacio");
+            throw new IllegalArgumentException("El enunciado no puede estar vacio");
         }
 
         if (recursoRef != null && recursoRef.isBlank()) {
-            throw new IllegalArgumentException(
-                "La referencia del recurso no puede estar vacia");
+            throw new IllegalArgumentException("La referencia del recurso no puede estar vacia");
         }
 
         if (enunciado == null && recursoRef == null) {
-            throw new IllegalArgumentException(
-                "La pregunta necesita un enunciado o recurso");
+            throw new IllegalArgumentException("La pregunta necesita un enunciado o recurso");
         }
 
         this.idPregunta = idPregunta;
-        this.idConfiguracionSubprueba =
-            idConfiguracionSubprueba;
+        this.idConfiguracionSubprueba = idConfiguracionSubprueba;
         this.numeroVisible = numeroVisible;
         this.ordenPresentacion = ordenPresentacion;
         this.enunciado = enunciado;

@@ -1,4 +1,3 @@
-
 package com.universidad.tests.infrastructure.persistence.entity;
 
 import jakarta.persistence.Column;
@@ -38,14 +37,10 @@ public class SubpruebaJpaEntity {
     }
 
     public SubpruebaJpaEntity(
-        TestJpaEntity test,
-        String codigo,
-        String nombre,
-        String descripcion) {
+            TestJpaEntity test, String codigo, String nombre, String descripcion) {
 
         if (test == null) {
-            throw new IllegalArgumentException(
-                "La subprueba debe pertenecer a un test");
+            throw new IllegalArgumentException("La subprueba debe pertenecer a un test");
         }
 
         this.test = test;
@@ -54,32 +49,24 @@ public class SubpruebaJpaEntity {
         this.descripcion = descripcion;
     }
 
-
-    public void actualizarDatos(
-        String codigo,
-        String nombre,
-        String descripcion) {
+    public void actualizarDatos(String codigo, String nombre, String descripcion) {
 
         if (codigo == null || codigo.isBlank()) {
-            throw new IllegalArgumentException(
-                "El codigo de la subprueba es obligatorio");
+            throw new IllegalArgumentException("El codigo de la subprueba es obligatorio");
         }
 
         if (nombre == null || nombre.isBlank()) {
-            throw new IllegalArgumentException(
-                "El nombre de la subprueba es obligatorio");
+            throw new IllegalArgumentException("El nombre de la subprueba es obligatorio");
         }
 
         if (descripcion != null && descripcion.isBlank()) {
-            throw new IllegalArgumentException(
-                "La descripcion no puede estar vacia");
+            throw new IllegalArgumentException("La descripcion no puede estar vacia");
         }
 
         this.codigo = codigo;
         this.nombre = nombre;
         this.descripcion = descripcion;
     }
-
 
     public Long getIdSubprueba() {
         return idSubprueba;

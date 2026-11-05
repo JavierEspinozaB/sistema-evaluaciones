@@ -1,4 +1,3 @@
-
 package com.universidad.tests.domain.port;
 
 public interface AutorizacionContenidoPort {

@@ -1,4 +1,3 @@
-
 package com.universidad.tests.domain.model;
 
 public class Subprueba {
@@ -9,14 +8,11 @@ public class Subprueba {
     private String nombre;
     private String descripcion;
 
-    public Subprueba(Long idSubprueba, Long idTest,
-                     String codigo, String nombre,
-                     String descripcion) {
+    public Subprueba(
+            Long idSubprueba, Long idTest, String codigo, String nombre, String descripcion) {
 
         if (idTest == null) {
-            throw new IllegalArgumentException(
-                "La subprueba debe pertenecer a un test"
-            );
+            throw new IllegalArgumentException("La subprueba debe pertenecer a un test");
         }
 
         this.idSubprueba = idSubprueba;
@@ -41,9 +37,7 @@ public class Subprueba {
 
     public void setCodigo(String codigo) {
         if (codigo == null || codigo.isBlank()) {
-            throw new IllegalArgumentException(
-                "El codigo de la subprueba es obligatorio"
-            );
+            throw new IllegalArgumentException("El codigo de la subprueba es obligatorio");
         }
         this.codigo = codigo;
     }
@@ -54,9 +48,7 @@ public class Subprueba {
 
     public void setNombre(String nombre) {
         if (nombre == null || nombre.isBlank()) {
-            throw new IllegalArgumentException(
-                "El nombre de la subprueba es obligatorio"
-            );
+            throw new IllegalArgumentException("El nombre de la subprueba es obligatorio");
         }
         this.nombre = nombre;
     }
