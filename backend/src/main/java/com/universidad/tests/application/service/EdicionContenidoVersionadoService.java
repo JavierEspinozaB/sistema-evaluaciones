@@ -11,12 +11,12 @@ import com.universidad.tests.domain.model.VersionFormulario;
 
 import com.universidad.tests.domain.repository.ConfiguracionSubpruebaRepository;
 import com.universidad.tests.domain.repository.OpcionRespuestaRepository;
-import com.universidad.tests.domain.repository.PreguntaRepository;
 import com.universidad.tests.domain.repository.VersionFormularioRepository;
 
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
+import com.universidad.tests.domain.repository.PreguntaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

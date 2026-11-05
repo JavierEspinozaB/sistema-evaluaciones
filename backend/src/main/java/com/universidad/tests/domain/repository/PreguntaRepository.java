@@ -2,7 +2,6 @@
 package com.universidad.tests.domain.repository;
 
 import com.universidad.tests.domain.model.Pregunta;
-
 import java.util.List;
 import java.util.Optional;
 
