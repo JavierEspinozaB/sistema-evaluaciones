@@ -78,4 +78,3 @@ public class Pregunta {
         return opciones.stream().anyMatch(o -> o.getId().equals(opcionId));
     }
 }
-

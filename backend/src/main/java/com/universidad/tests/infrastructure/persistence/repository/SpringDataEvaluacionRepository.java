@@ -6,4 +6,3 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface SpringDataEvaluacionRepository extends JpaRepository<EvaluacionEntity, String> {}
-

@@ -12,4 +12,3 @@ public class SubpruebaFueraDeOrdenException extends RuntimeException {
         return codigo;
     }
 }
-

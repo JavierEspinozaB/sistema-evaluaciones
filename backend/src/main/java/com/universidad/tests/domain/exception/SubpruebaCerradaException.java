@@ -5,4 +5,3 @@ public class SubpruebaCerradaException extends RuntimeException {
         super(message);
     }
 }
-

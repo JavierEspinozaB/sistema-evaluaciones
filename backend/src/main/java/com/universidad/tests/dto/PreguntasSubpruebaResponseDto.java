@@ -7,4 +7,3 @@ public record PreguntasSubpruebaResponseDto(
         Long segundosRestantes,
         boolean permitirRetroceso,
         List<PreguntaResponseDto> preguntas) {}
-

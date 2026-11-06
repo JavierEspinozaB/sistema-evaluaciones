@@ -21,9 +21,10 @@ export interface EvaluacionInfo {
 }
 
 export interface OpcionInfo {
-  id: string;
-  etiqueta: string;
+  letra?: string;
   texto: string;
+  id?: string;
+  etiqueta?: string;
 }
 
 export interface PreguntaInfo {
@@ -43,8 +44,18 @@ export interface PreguntasSubpruebaResponse {
   preguntas: PreguntaInfo[];
 }
 
-export interface RegistrarRespuestaRequest {
+export interface ItemRespuesta {
   preguntaId: string;
+  opcion?: string | null;
+  opcionId?: string | null;
+  valorTexto?: string | null;
+  ordenEntrada?: number;
+}
+
+export interface RegistrarRespuestaRequest {
+  respuestas?: ItemRespuesta[];
+  preguntaId?: string;
+  opcion?: string | null;
   opcionId?: string | null;
   valorTexto?: string | null;
   ordenEntrada?: number;
@@ -85,13 +96,26 @@ export const evaluacionService = {
     subpruebaCodigo: string,
     body: RegistrarRespuestaRequest,
   ): Promise<AvanceSubpruebaResponse> {
+    const payload =
+      body.respuestas != null
+        ? body
+        : {
+            respuestas: [
+              {
+                preguntaId: body.preguntaId!,
+                opcion: body.opcion ?? body.opcionId ?? null,
+                valorTexto: body.valorTexto ?? null,
+                ordenEntrada: body.ordenEntrada ?? 1,
+              },
+            ],
+          };
+
     return http<AvanceSubpruebaResponse>(
       `/evaluaciones/${encodeURIComponent(evaluacionId)}/subpruebas/${encodeURIComponent(subpruebaCodigo)}/respuestas`,
       {
         method: 'PUT',
-        body: JSON.stringify(body),
+        body: JSON.stringify(payload),
       },
     );
   },
 };
-

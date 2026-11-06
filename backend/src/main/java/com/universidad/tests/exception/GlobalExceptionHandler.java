@@ -7,6 +7,7 @@ import com.universidad.tests.domain.exception.SubpruebaCerradaException;
 import com.universidad.tests.domain.exception.SubpruebaFueraDeOrdenException;
 import com.universidad.tests.domain.exception.SubpruebaNoActivaException;
 import com.universidad.tests.domain.exception.TiempoAgotadoException;
+import com.universidad.tests.dto.DetalleErrorDto;
 import com.universidad.tests.dto.ErrorResponseDto;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
@@ -94,6 +95,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RespuestaInvalidaException.class)
     public ResponseEntity<ErrorResponseDto> handleRespuestaInvalida(
             RespuestaInvalidaException ex, HttpServletRequest request) {
+        String campo = ex.getCampo() != null ? ex.getCampo() : "opcion";
+        List<DetalleErrorDto> detalles = List.of(new DetalleErrorDto(campo, ex.getMessage()));
+
         ErrorResponseDto error =
                 new ErrorResponseDto(
                         Instant.now(),
@@ -101,13 +105,21 @@ public class GlobalExceptionHandler {
                         "RESPUESTA_INVALIDA",
                         ex.getMessage(),
                         request.getRequestURI(),
-                        null);
+                        detalles);
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(error);
     }
 
     @ExceptionHandler(SolicitudInvalidaException.class)
     public ResponseEntity<ErrorResponseDto> handleSolicitudInvalida(
             SolicitudInvalidaException ex, HttpServletRequest request) {
+        List<DetalleErrorDto> detalles =
+                ex.getDetalles().stream()
+                        .map(d -> new DetalleErrorDto(d.campo(), d.mensaje()))
+                        .toList();
+        if (detalles.isEmpty()) {
+            detalles = List.of(new DetalleErrorDto("cuerpo", ex.getMessage()));
+        }
+
         ErrorResponseDto error =
                 new ErrorResponseDto(
                         Instant.now(),
@@ -115,16 +127,19 @@ public class GlobalExceptionHandler {
                         "SOLICITUD_INVALIDA",
                         ex.getMessage(),
                         request.getRequestURI(),
-                        ex.getDetalles());
+                        detalles);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponseDto> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
-        List<String> detalles =
+        List<DetalleErrorDto> detalles =
                 ex.getBindingResult().getFieldErrors().stream()
-                        .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                        .map(
+                                error ->
+                                        new DetalleErrorDto(
+                                                error.getField(), error.getDefaultMessage()))
                         .toList();
 
         ErrorResponseDto error =
@@ -148,8 +163,21 @@ public class GlobalExceptionHandler {
                         "SOLICITUD_INVALIDA",
                         "El formato del cuerpo JSON es inválido.",
                         request.getRequestURI(),
-                        List.of("Cuerpo JSON mal formado"));
+                        List.of(new DetalleErrorDto("cuerpo", "JSON mal formado")));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
-}
 
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponseDto> handleGeneralException(
+            Exception ex, HttpServletRequest request) {
+        ErrorResponseDto error =
+                new ErrorResponseDto(
+                        Instant.now(),
+                        HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                        "ERROR_INTERNO",
+                        "Ha ocurrido un error interno en el servidor.",
+                        request.getRequestURI(),
+                        null);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+}

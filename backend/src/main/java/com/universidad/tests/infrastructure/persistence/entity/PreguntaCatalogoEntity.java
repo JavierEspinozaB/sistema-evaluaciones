@@ -117,4 +117,3 @@ public class PreguntaCatalogoEntity {
         this.opciones = opciones;
     }
 }
-

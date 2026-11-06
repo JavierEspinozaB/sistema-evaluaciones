@@ -5,4 +5,3 @@ public class TiempoAgotadoException extends RuntimeException {
         super(message);
     }
 }
-

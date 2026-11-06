@@ -7,4 +7,3 @@ public record AvanceSubpruebaResponseDto(
         long totalRespondidas,
         int totalPreguntas,
         boolean guardado) {}
-

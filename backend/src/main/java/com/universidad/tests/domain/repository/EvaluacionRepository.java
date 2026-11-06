@@ -13,4 +13,3 @@ public interface EvaluacionRepository {
 
     void guardarSubprueba(EvaluacionSubprueba subprueba);
 }
-

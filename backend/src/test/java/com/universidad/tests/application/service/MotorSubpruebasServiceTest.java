@@ -167,7 +167,7 @@ class MotorSubpruebasServiceTest {
         assertThat(result.codigo()).isEqualTo("VOC1");
         assertThat(result.segundosRestantes()).isEqualTo(300L);
         assertThat(result.preguntas()).hasSize(1);
-        assertThat(result.preguntas().get(0).respuestaActual()).isEqualTo("OPT-B");
+        assertThat(result.preguntas().get(0).respuestaActual()).isEqualTo("B");
         // Verificar que no hay campo claveCorrecta expuesto en el DTO
         assertThat(result.preguntas().get(0).opciones()).hasSize(2);
     }
@@ -343,6 +343,88 @@ class MotorSubpruebasServiceTest {
                                         "VOC1",
                                         new RegistrarRespuestaRequestDto(
                                                 "P-01", "OPT-AJENA", null, 1)))
-                .isInstanceOf(RespuestaInvalidaException.class);
+                .isInstanceOf(RespuestaInvalidaException.class)
+                .hasFieldOrPropertyWithValue("campo", "opcion");
+    }
+
+    @Test
+    @DisplayName("TC-GEN-03-019 (BUG-01): Vencimiento de VOC1 se persiste y permite iniciar VOC2")
+    void tc019_bug01_cierrePorTiempoPermiteIniciarSiguienteSubprueba() {
+        // VOC1 inició hace 400s con duración 300s -> ya expiró
+        EvaluacionSubprueba voc1 =
+                new EvaluacionSubprueba(
+                        1L,
+                        "EV-01",
+                        "VOC1",
+                        "Vocabulario 1",
+                        1,
+                        300,
+                        EstadoSubprueba.ACTIVA,
+                        "Instrucciones VOC1",
+                        true,
+                        baseTime.minusSeconds(400),
+                        baseTime.minusSeconds(100),
+                        null);
+
+        EvaluacionSubprueba voc2 =
+                new EvaluacionSubprueba(
+                        2L,
+                        "EV-01",
+                        "VOC2",
+                        "Vocabulario 2",
+                        2,
+                        360,
+                        EstadoSubprueba.PENDIENTE,
+                        "Instrucciones VOC2",
+                        true,
+                        null,
+                        null,
+                        null);
+
+        Evaluacion evaluacion =
+                new Evaluacion("EV-01", "SUJETO-01", "EN_PROGRESO", List.of(voc1, voc2));
+        when(evaluacionRepository.buscarPorId("EV-01")).thenReturn(Optional.of(evaluacion));
+
+        SubpruebaResponseDto result = service.iniciarSubprueba("EV-01", "VOC2");
+
+        assertThat(voc1.getEstado()).isEqualTo(EstadoSubprueba.CERRADA);
+        assertThat(voc1.getFechaCierre()).isEqualTo(baseTime);
+        assertThat(result.codigo()).isEqualTo("VOC2");
+        assertThat(result.estado()).isEqualTo("ACTIVA");
+        verify(evaluacionRepository).guardarSubprueba(voc1);
+        verify(evaluacionRepository).guardarSubprueba(voc2);
+    }
+
+    @Test
+    @DisplayName("TC-GEN-03-013: Registrar respuesta con formato lista BFA §5.3 y letra")
+    void tc013_registrarRespuestaConListaRespuestasYLetra() {
+        Evaluacion evaluacion =
+                crearEvaluacionMock(EstadoSubprueba.ACTIVA, EstadoSubprueba.PENDIENTE);
+        when(evaluacionRepository.buscarPorId("EV-01")).thenReturn(Optional.of(evaluacion));
+
+        Pregunta p1 =
+                new Pregunta(
+                        "P-01",
+                        "VOC1",
+                        1,
+                        "Pregunta 1",
+                        null,
+                        TipoRespuesta.SELECCION,
+                        "OPT-A",
+                        1,
+                        List.of(new Opcion("OPT-A", "A", "Opción A", 1)));
+        when(preguntaRepository.buscarPorId("P-01")).thenReturn(Optional.of(p1));
+        when(preguntaRepository.listarPorSubprueba("VOC1")).thenReturn(List.of(p1));
+        when(respuestaRepository.contarPorEvaluacionYSubprueba("EV-01", "VOC1")).thenReturn(1L);
+
+        RegistrarRespuestaRequestDto request =
+                new RegistrarRespuestaRequestDto(
+                        List.of(new com.universidad.tests.dto.ItemRespuestaDto("P-01", "A")));
+
+        AvanceSubpruebaResponseDto response = service.registrarRespuesta("EV-01", "VOC1", request);
+
+        assertThat(response.guardado()).isTrue();
+        assertThat(response.totalRespondidas()).isEqualTo(1L);
+        verify(respuestaRepository).guardar(any(RespuestaEvaluacion.class));
     }
 }

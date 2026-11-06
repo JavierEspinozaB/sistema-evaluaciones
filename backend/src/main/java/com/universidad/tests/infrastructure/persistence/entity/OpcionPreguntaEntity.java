@@ -71,4 +71,3 @@ public class OpcionPreguntaEntity {
         this.orden = orden;
     }
 }
-

@@ -4,4 +4,3 @@ public enum TipoRespuesta {
     SELECCION,
     TEXTO
 }
-

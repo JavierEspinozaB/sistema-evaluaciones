@@ -1,9 +1,36 @@
 package com.universidad.tests.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import java.util.List;
 
 public record RegistrarRespuestaRequestDto(
-        @NotBlank(message = "preguntaId es obligatorio") String preguntaId,
+        List<ItemRespuestaDto> respuestas,
+        String preguntaId,
+        String opcion,
         String opcionId,
         String valorTexto,
-        Integer ordenEntrada) {}
+        Integer ordenEntrada) {
+
+    public RegistrarRespuestaRequestDto(
+            String preguntaId, String opcion, String valorTexto, Integer ordenEntrada) {
+        this(null, preguntaId, opcion, opcion, valorTexto, ordenEntrada);
+    }
+
+    public RegistrarRespuestaRequestDto(List<ItemRespuestaDto> respuestas) {
+        this(respuestas, null, null, null, null, null);
+    }
+
+    public List<ItemRespuestaDto> obtenerListaRespuestas() {
+        if (respuestas != null && !respuestas.isEmpty()) {
+            return respuestas;
+        }
+        if (preguntaId != null
+                || opcion != null
+                || opcionId != null
+                || valorTexto != null
+                || ordenEntrada != null) {
+            String opt = opcion != null ? opcion : opcionId;
+            return List.of(new ItemRespuestaDto(preguntaId, opt, opt, valorTexto, ordenEntrada));
+        }
+        return List.of();
+    }
+}

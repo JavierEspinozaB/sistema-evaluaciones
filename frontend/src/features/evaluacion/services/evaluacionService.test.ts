@@ -65,10 +65,10 @@ describe('evaluacionService', () => {
           id: 'P-01',
           numero: 1,
           enunciado: '¿Pregunta 1?',
-          tipoRespuesta: 'SELECCION',
+          tipoRespuesta: 'SELECCION' as const,
           recursoMultimedia: null,
-          opciones: [{ id: 'OPT-A', etiqueta: 'A', texto: 'Opción A' }],
-          respuestaActual: 'OPT-A',
+          opciones: [{ id: 'OPT-A', letra: 'A', etiqueta: 'A', texto: 'Opción A' }],
+          respuestaActual: 'A',
         },
       ],
     };
@@ -84,7 +84,7 @@ describe('evaluacionService', () => {
     expect(res.segundosRestantes).toBe(290);
   });
 
-  it('registrarRespuesta (E7) realiza PUT a /api/v1/evaluaciones/{id}/subpruebas/{codigo}/respuestas', async () => {
+  it('registrarRespuesta (E7) realiza PUT con {"respuestas": [...]} (BFA §5.3)', async () => {
     const mockAvance = {
       evaluacionId: 'EV-01',
       subpruebaCodigo: 'VOC1',
@@ -97,7 +97,7 @@ describe('evaluacionService', () => {
 
     const requestBody = {
       preguntaId: 'P-01',
-      opcionId: 'OPT-A',
+      opcion: 'A',
     };
 
     const res = await evaluacionService.registrarRespuesta('EV-01', 'VOC1', requestBody);
@@ -106,11 +106,19 @@ describe('evaluacionService', () => {
       '/api/v1/evaluaciones/EV-01/subpruebas/VOC1/respuestas',
       expect.objectContaining({
         method: 'PUT',
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({
+          respuestas: [
+            {
+              preguntaId: 'P-01',
+              opcion: 'A',
+              valorTexto: null,
+              ordenEntrada: 1,
+            },
+          ],
+        }),
       }),
     );
     expect(res.guardado).toBe(true);
     expect(res.totalRespondidas).toBe(1);
   });
 });
-

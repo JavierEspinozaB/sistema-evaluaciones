@@ -23,4 +23,3 @@ public interface SpringDataRespuestaRepository
     long countByEvaluacionIdAndSubpruebaCodigoIgnoreCase(
             String evaluacionId, String subpruebaCodigo);
 }
-

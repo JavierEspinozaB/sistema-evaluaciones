@@ -9,4 +9,3 @@ public interface PreguntaRepository {
 
     Optional<Pregunta> buscarPorId(String id);
 }
-

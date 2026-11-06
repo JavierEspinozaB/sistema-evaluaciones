@@ -49,17 +49,26 @@ public class MotorSubpruebasMapper {
             List<RespuestaEvaluacion> respuestas,
             Instant ahora) {
 
+        Map<String, String> opcionIdALetra =
+                preguntas.stream()
+                        .flatMap(p -> p.getOpciones().stream())
+                        .collect(Collectors.toMap(Opcion::getId, Opcion::getEtiqueta, (a, b) -> a));
+
         Map<String, String> respuestasMap =
                 respuestas.stream()
                         .collect(
                                 Collectors.toMap(
                                         RespuestaEvaluacion::getPreguntaId,
-                                        r ->
-                                                r.getOpcionId() != null
-                                                        ? r.getOpcionId()
-                                                        : (r.getValorTexto() != null
-                                                                ? r.getValorTexto()
-                                                                : ""),
+                                        r -> {
+                                            if (r.getOpcionId() != null) {
+                                                String letra = opcionIdALetra.get(r.getOpcionId());
+                                                return letra != null ? letra : r.getOpcionId();
+                                            } else if (r.getValorTexto() != null) {
+                                                return r.getValorTexto();
+                                            } else {
+                                                return "";
+                                            }
+                                        },
                                         (existente, reemplazo) -> reemplazo));
 
         List<PreguntaResponseDto> preguntasDto =
@@ -85,7 +94,10 @@ public class MotorSubpruebasMapper {
 
     public List<OpcionResponseDto> toOpcionesDto(List<Opcion> opciones) {
         return opciones.stream()
-                .map(o -> new OpcionResponseDto(o.getId(), o.getEtiqueta(), o.getTexto()))
+                .map(
+                        o ->
+                                new OpcionResponseDto(
+                                        o.getEtiqueta(), o.getTexto(), o.getId(), o.getEtiqueta()))
                 .toList();
     }
 }

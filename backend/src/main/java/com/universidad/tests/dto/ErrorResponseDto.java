@@ -11,5 +11,4 @@ public record ErrorResponseDto(
         String codigo,
         String mensaje,
         String ruta,
-        List<String> detalles) {}
-
+        List<DetalleErrorDto> detalles) {}

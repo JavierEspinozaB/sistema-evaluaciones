@@ -13,4 +13,3 @@ public record SubpruebaResponseDto(
         Instant finLimite,
         String instrucciones,
         boolean permitirRetroceso) {}
-

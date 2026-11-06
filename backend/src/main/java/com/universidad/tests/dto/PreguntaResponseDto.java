@@ -10,4 +10,3 @@ public record PreguntaResponseDto(
         String recursoMultimedia,
         List<OpcionResponseDto> opciones,
         String respuestaActual) {}
-

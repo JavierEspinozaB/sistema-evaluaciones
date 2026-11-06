@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router';
 import { TestScreen } from '../../../components/TestScreen';
 import type { SaveState } from '../../../components/SaveStatus';
@@ -8,6 +8,7 @@ import {
   type PreguntaInfo,
   type SubpruebaInfo,
 } from '../services/evaluacionService';
+import { FluidezVerbal } from '../../bfa/components/FluidezVerbal';
 
 export interface SubpruebaRunnerProps {
   evaluacionId?: string;
@@ -23,6 +24,7 @@ export function SubpruebaRunner(props: SubpruebaRunnerProps) {
   const [preguntas, setPreguntas] = useState<PreguntaInfo[]>([]);
   const [indicePregunta, setIndicePregunta] = useState(0);
   const [respuestas, setRespuestas] = useState<Record<string, string>>({});
+  const [palabrasFV, setPalabrasFV] = useState<string[]>([]);
   const [tiempoRestante, setTiempoRestante] = useState<number | null>(null);
   const [fase, setFase] = useState<'instructions' | 'practice' | 'active' | 'closed'>(
     'instructions',
@@ -30,6 +32,25 @@ export function SubpruebaRunner(props: SubpruebaRunnerProps) {
   const [saveState, setSaveState] = useState<SaveState>('saved');
   const [mensajeError, setMensajeError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
+
+  // Estado de práctica
+  const [practiceSelection, setPracticeSelection] = useState<string | null>(null);
+  const [practiceText, setPracticeText] = useState<string>('');
+
+  // Concurrencia e idempotencia en guardado (BUG-02)
+  const peticionesEnCursoRef = useRef<Record<string, boolean>>({});
+  const ultimosValoresGuardadosRef = useRef<Record<string, string>>({});
+
+  const esFluidezVerbal = useMemo(() => {
+    const cod = (subprueba?.codigo ?? codigo).toUpperCase();
+    return cod === 'FV' || cod.includes('FLUIDEZ');
+  }, [subprueba?.codigo, codigo]);
+
+  const letraFV = useMemo(() => {
+    const fuente = `${subprueba?.instrucciones ?? ''} ${preguntas[0]?.enunciado ?? ''}`;
+    const match = fuente.match(/(?:letra|con la)\s+["']?([A-Za-z])["']?/i);
+    return match ? match[1].toUpperCase() : 'M';
+  }, [subprueba?.instrucciones, preguntas]);
 
   // Carga inicial
   useEffect(() => {
@@ -73,12 +94,18 @@ export function SubpruebaRunner(props: SubpruebaRunnerProps) {
           setFase('active');
 
           const iniciales: Record<string, string> = {};
+          const palabrasRecuperadas: string[] = [];
+
           res.preguntas.forEach((p) => {
             if (p.respuestaActual) {
               iniciales[p.id] = p.respuestaActual;
+              palabrasRecuperadas.push(p.respuestaActual);
             }
           });
           setRespuestas(iniciales);
+          if (palabrasRecuperadas.length > 0) {
+            setPalabrasFV(palabrasRecuperadas);
+          }
         } else {
           // PENDIENTE: inicia en fase de instrucciones
           setFase('instructions');
@@ -160,21 +187,41 @@ export function SubpruebaRunner(props: SubpruebaRunnerProps) {
     }
   }, [evaluacionId, codigo]);
 
-  // Guardar respuesta con E7
+  // Guardar respuesta con E7 y protección contra guardados duplicados (BUG-02)
   const enviarRespuesta = useCallback(
-    async (preguntaId: string, opcionId?: string, valorTexto?: string) => {
+    async (preguntaId: string, opcion?: string, valorTexto?: string, ordenEntrada: number = 1) => {
       if (fase !== 'active' || (tiempoRestante !== null && tiempoRestante <= 0)) {
         setFase('closed');
         return;
       }
 
+      const clave = `${preguntaId}_${ordenEntrada}`;
+      const valorAEnviar = `${opcion ?? ''}__${valorTexto ?? ''}`;
+
+      // Evitar envíos repetidos o en curso del mismo valor
+      if (ultimosValoresGuardadosRef.current[clave] === valorAEnviar) {
+        setSaveState('saved');
+        return;
+      }
+      if (peticionesEnCursoRef.current[clave]) {
+        return;
+      }
+
+      peticionesEnCursoRef.current[clave] = true;
       setSaveState('saving');
+
       try {
         await evaluacionService.registrarRespuesta(evaluacionId, codigo, {
-          preguntaId,
-          opcionId: opcionId ?? null,
-          valorTexto: valorTexto ?? null,
+          respuestas: [
+            {
+              preguntaId,
+              opcion: opcion ?? null,
+              valorTexto: valorTexto ?? null,
+              ordenEntrada,
+            },
+          ],
         });
+        ultimosValoresGuardadosRef.current[clave] = valorAEnviar;
         setSaveState('saved');
       } catch (err) {
         setSaveState('error');
@@ -187,6 +234,8 @@ export function SubpruebaRunner(props: SubpruebaRunnerProps) {
             setTiempoRestante(0);
           }
         }
+      } finally {
+        peticionesEnCursoRef.current[clave] = false;
       }
     },
     [evaluacionId, codigo, fase, tiempoRestante],
@@ -196,12 +245,12 @@ export function SubpruebaRunner(props: SubpruebaRunnerProps) {
   guardarRespuestaRef.current = enviarRespuesta;
 
   const handleSelectOption = useCallback(
-    (opcionId: string) => {
+    (opcionLetraOId: string) => {
       const preguntaActual = preguntas[indicePregunta];
       if (!preguntaActual) return;
 
-      setRespuestas((prev) => ({ ...prev, [preguntaActual.id]: opcionId }));
-      guardarRespuestaRef.current(preguntaActual.id, opcionId, undefined);
+      setRespuestas((prev) => ({ ...prev, [preguntaActual.id]: opcionLetraOId }));
+      guardarRespuestaRef.current(preguntaActual.id, opcionLetraOId, undefined, 1);
     },
     [preguntas, indicePregunta],
   );
@@ -212,13 +261,35 @@ export function SubpruebaRunner(props: SubpruebaRunnerProps) {
       if (!preguntaActual) return;
 
       setRespuestas((prev) => ({ ...prev, [preguntaActual.id]: valor }));
-      guardarRespuestaRef.current(preguntaActual.id, undefined, valor);
+      guardarRespuestaRef.current(preguntaActual.id, undefined, valor, 1);
     },
     [preguntas, indicePregunta],
   );
 
+  // Manejador específico para Fluidez Verbal (TC-002)
+  const handlePalabrasChange = useCallback(
+    (nuevasPalabras: string[]) => {
+      setPalabrasFV(nuevasPalabras);
+      const preguntaId = preguntas[0]?.id || 'FV-01';
+
+      nuevasPalabras.forEach((palabra, idx) => {
+        if (palabra.trim() !== '') {
+          guardarRespuestaRef.current(preguntaId, undefined, palabra.trim(), idx + 1);
+        }
+      });
+    },
+    [preguntas],
+  );
+
   const handleNext = useCallback(() => {
-    if (fase === 'instructions' || fase === 'practice') {
+    if (fase === 'instructions') {
+      // Avanzar a la fase de práctica antes de iniciar el tiempo oficial (TC-003)
+      setFase('practice');
+      return;
+    }
+
+    if (fase === 'practice') {
+      // Iniciar el tiempo oficial tras completar la práctica
       iniciarTiempoOficial();
       return;
     }
@@ -232,10 +303,15 @@ export function SubpruebaRunner(props: SubpruebaRunnerProps) {
   }, [fase, indicePregunta, preguntas.length, iniciarTiempoOficial]);
 
   const handlePrevious = useCallback(() => {
+    if (fase === 'practice') {
+      setFase('instructions');
+      return;
+    }
+
     if (subprueba?.permitirRetroceso && indicePregunta > 0) {
       setIndicePregunta((i) => i - 1);
     }
-  }, [subprueba?.permitirRetroceso, indicePregunta]);
+  }, [fase, subprueba?.permitirRetroceso, indicePregunta]);
 
   if (cargando) {
     return <div className="test-screen-loading">Cargando subprueba...</div>;
@@ -253,51 +329,102 @@ export function SubpruebaRunner(props: SubpruebaRunnerProps) {
   const preguntaActual = preguntas[indicePregunta];
   const totalPreguntas = preguntas.length;
 
+  const practiceOptions = [
+    { id: 'A', label: 'Opción A (Ejemplo de práctica)' },
+    { id: 'B', label: 'Opción B (Ejemplo de práctica)' },
+    { id: 'C', label: 'Opción C (Ejemplo de práctica)' },
+  ];
+
   return (
     <TestScreen
       testName={subprueba?.nombre ?? codigo}
-      questionNumber={indicePregunta + 1}
-      totalQuestions={totalPreguntas || 1}
+      questionNumber={fase === 'active' ? indicePregunta + 1 : 1}
+      totalQuestions={fase === 'active' ? totalPreguntas || 1 : 1}
       timeRemainingSeconds={tiempoRestante}
       phase={fase}
       phaseTitle={
         fase === 'instructions'
           ? `Instrucciones: ${subprueba?.nombre ?? codigo}`
-          : fase === 'closed'
-            ? 'Subprueba Finalizada'
-            : undefined
+          : fase === 'practice'
+            ? `Práctica: ${subprueba?.nombre ?? codigo}`
+            : fase === 'closed'
+              ? 'Subprueba Finalizada'
+              : undefined
       }
       phaseDescription={
         fase === 'instructions'
           ? (subprueba?.instrucciones ??
-            'Lea atentamente las instrucciones antes de comenzar. El tiempo oficial comenzará una vez que presione "Comenzar subprueba".')
-          : fase === 'closed'
-            ? 'El tiempo para esta subprueba ha finalizado o ha completado todas las preguntas. No se admiten más respuestas.'
-            : undefined
+            'Lea atentamente las instrucciones antes de comenzar. Presione "Ir a la práctica" para ver un ejemplo antes de que inicie el tiempo oficial.')
+          : fase === 'practice'
+            ? 'Esta es una práctica de ejemplo para familiarizarse con el formato. No cuenta para la calificación ni consume tiempo oficial. Cuando esté listo, presione "Comenzar subprueba oficial".'
+            : fase === 'closed'
+              ? 'El tiempo para esta subprueba ha finalizado o ha completado todas las preguntas. No se admiten más respuestas.'
+              : undefined
       }
-      prompt={preguntaActual?.enunciado ?? ''}
+      prompt={
+        fase === 'practice'
+          ? esFluidezVerbal
+            ? 'Práctica: Escriba una o dos palabras de ejemplo con la letra asignada.'
+            : 'Pregunta de práctica: Seleccione una opción para probar la interfaz antes de iniciar el tiempo.'
+          : (preguntaActual?.enunciado ?? '')
+      }
       options={
-        preguntaActual?.opciones.map((o) => ({
-          id: o.id,
-          label: o.etiqueta,
-          text: o.texto,
-        })) ?? []
+        fase === 'practice'
+          ? esFluidezVerbal
+            ? []
+            : practiceOptions
+          : (preguntaActual?.opciones.map((o) => ({
+              id: o.letra || o.etiqueta || o.id || '',
+              label: o.texto || o.etiqueta || '',
+            })) ?? [])
       }
-      responseType={preguntaActual?.tipoRespuesta === 'TEXTO' ? 'text' : 'selection'}
-      selectedOption={preguntaActual ? (respuestas[preguntaActual.id] ?? null) : null}
-      textResponse={preguntaActual ? (respuestas[preguntaActual.id] ?? '') : ''}
+      responseType={
+        esFluidezVerbal
+          ? 'text'
+          : preguntaActual?.tipoRespuesta === 'TEXTO' ||
+              (preguntaActual && preguntaActual.opciones.length === 0)
+            ? 'text'
+            : 'selection'
+      }
+      selectedOption={
+        fase === 'practice'
+          ? practiceSelection
+          : preguntaActual
+            ? (respuestas[preguntaActual.id] ?? null)
+            : null
+      }
+      textResponse={
+        fase === 'practice'
+          ? practiceText
+          : preguntaActual
+            ? (respuestas[preguntaActual.id] ?? '')
+            : ''
+      }
+      responseArea={
+        esFluidezVerbal && fase === 'active' ? (
+          <FluidezVerbal letra={letraFV} palabras={palabrasFV} onChange={handlePalabrasChange} />
+        ) : undefined
+      }
       saveState={saveState}
       primaryActionLabel={
         fase === 'instructions'
-          ? 'Comenzar subprueba'
-          : indicePregunta === totalPreguntas - 1
-            ? 'Finalizar'
-            : 'Siguiente'
+          ? 'Ir a la práctica'
+          : fase === 'practice'
+            ? 'Comenzar subprueba oficial'
+            : indicePregunta === totalPreguntas - 1
+              ? 'Finalizar'
+              : 'Siguiente'
       }
       previousActionLabel="Anterior"
-      onPrevious={subprueba?.permitirRetroceso && indicePregunta > 0 ? handlePrevious : undefined}
-      onSelect={handleSelectOption}
-      onTextResponse={handleTextResponse}
+      onPrevious={
+        fase === 'practice'
+          ? handlePrevious
+          : subprueba?.permitirRetroceso && indicePregunta > 0
+            ? handlePrevious
+            : undefined
+      }
+      onSelect={fase === 'practice' ? setPracticeSelection : handleSelectOption}
+      onTextResponse={fase === 'practice' ? setPracticeText : handleTextResponse}
       onNext={handleNext}
     />
   );

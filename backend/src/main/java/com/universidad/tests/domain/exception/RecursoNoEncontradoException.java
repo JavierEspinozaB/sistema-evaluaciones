@@ -12,4 +12,3 @@ public class RecursoNoEncontradoException extends RuntimeException {
         return codigo;
     }
 }
-

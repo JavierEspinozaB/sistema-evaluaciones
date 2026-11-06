@@ -186,6 +186,13 @@ class EvaluacionControllerTest {
         RegistrarRespuestaRequestDto request =
                 new RegistrarRespuestaRequestDto("", "OPT-A", null, 1);
 
+        when(motorSubpruebasService.registrarRespuesta(eq("EV-01"), eq("VOC1"), any()))
+                .thenThrow(
+                        new com.universidad.tests.domain.exception.SolicitudInvalidaException(
+                                "El identificador de pregunta es obligatorio.",
+                                "preguntaId",
+                                "preguntaId es obligatorio"));
+
         mockMvc.perform(
                         put("/api/v1/evaluaciones/EV-01/subpruebas/VOC1/respuestas")
                                 .contentType(MediaType.APPLICATION_JSON)

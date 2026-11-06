@@ -5,4 +5,3 @@ public class SubpruebaNoActivaException extends RuntimeException {
         super(message);
     }
 }
-

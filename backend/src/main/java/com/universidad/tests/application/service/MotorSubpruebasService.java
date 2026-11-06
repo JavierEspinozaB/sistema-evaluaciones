@@ -9,6 +9,7 @@ import com.universidad.tests.domain.exception.TiempoAgotadoException;
 import com.universidad.tests.domain.model.EstadoSubprueba;
 import com.universidad.tests.domain.model.Evaluacion;
 import com.universidad.tests.domain.model.EvaluacionSubprueba;
+import com.universidad.tests.domain.model.Opcion;
 import com.universidad.tests.domain.model.Pregunta;
 import com.universidad.tests.domain.model.RespuestaEvaluacion;
 import com.universidad.tests.domain.model.TipoRespuesta;
@@ -17,6 +18,7 @@ import com.universidad.tests.domain.repository.PreguntaRepository;
 import com.universidad.tests.domain.repository.RespuestaRepository;
 import com.universidad.tests.dto.AvanceSubpruebaResponseDto;
 import com.universidad.tests.dto.EvaluacionResponseDto;
+import com.universidad.tests.dto.ItemRespuestaDto;
 import com.universidad.tests.dto.PreguntasSubpruebaResponseDto;
 import com.universidad.tests.dto.RegistrarRespuestaRequestDto;
 import com.universidad.tests.dto.SubpruebaResponseDto;
@@ -29,7 +31,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional
+@Transactional(
+        noRollbackFor = {
+            TiempoAgotadoException.class,
+            SubpruebaCerradaException.class,
+            SubpruebaNoActivaException.class
+        })
 public class MotorSubpruebasService {
 
     private final EvaluacionRepository evaluacionRepository;
@@ -51,12 +58,10 @@ public class MotorSubpruebasService {
         this.clock = clock;
     }
 
-    @Transactional(readOnly = true)
     public EvaluacionResponseDto consultarEvaluacion(String evaluacionId) {
         Instant ahora = clock.instant();
         Evaluacion evaluacion = obtenerEvaluacionOError(evaluacionId);
 
-        // Auto-cerrar cualquier subprueba expirada
         for (EvaluacionSubprueba sub : evaluacion.getSubpruebas()) {
             if (sub.getEstado() == EstadoSubprueba.ACTIVA && sub.haExpirado(ahora)) {
                 sub.cerrar(ahora);
@@ -70,6 +75,15 @@ public class MotorSubpruebasService {
     public SubpruebaResponseDto iniciarSubprueba(String evaluacionId, String subpruebaCodigo) {
         Instant ahora = clock.instant();
         Evaluacion evaluacion = obtenerEvaluacionOError(evaluacionId);
+
+        // 1. Auto-cerrar cualquier subprueba ACTIVA que haya expirado
+        for (EvaluacionSubprueba sub : evaluacion.getSubpruebas()) {
+            if (sub.getEstado() == EstadoSubprueba.ACTIVA && sub.haExpirado(ahora)) {
+                sub.cerrar(ahora);
+                evaluacionRepository.guardarSubprueba(sub);
+            }
+        }
+
         EvaluacionSubprueba subprueba = evaluacion.buscarSubprueba(subpruebaCodigo);
 
         if (subprueba.getEstado() == EstadoSubprueba.CERRADA) {
@@ -84,22 +98,11 @@ public class MotorSubpruebasService {
                 throw new SubpruebaCerradaException(
                         "La subprueba " + subpruebaCodigo + " ya ha finalizado su tiempo.");
             }
-            // Idempotente: CU-BFA-P03
             return mapper.toSubpruebaDto(subprueba, ahora);
         }
 
-        // Validar orden estricto
+        // 2. Validar orden estricto (ahora que las expiradas ya fueron cerradas)
         evaluacion.validarOrdenSubprueba(subpruebaCodigo);
-
-        // Validar que ninguna otra subprueba esté activa
-        for (EvaluacionSubprueba sub : evaluacion.getSubpruebas()) {
-            if (sub.getEstado() == EstadoSubprueba.ACTIVA) {
-                if (sub.haExpirado(ahora)) {
-                    sub.cerrar(ahora);
-                    evaluacionRepository.guardarSubprueba(sub);
-                }
-            }
-        }
 
         subprueba.iniciar(ahora);
         evaluacionRepository.guardarSubprueba(subprueba);
@@ -136,12 +139,6 @@ public class MotorSubpruebasService {
             String evaluacionId, String subpruebaCodigo, RegistrarRespuestaRequestDto request) {
         Instant ahora = clock.instant();
 
-        if (request == null || request.preguntaId() == null || request.preguntaId().isBlank()) {
-            throw new SolicitudInvalidaException(
-                    "El identificador de pregunta es obligatorio.",
-                    List.of("preguntaId no puede ser nulo ni vacío"));
-        }
-
         Evaluacion evaluacion = obtenerEvaluacionOError(evaluacionId);
         EvaluacionSubprueba subprueba = evaluacion.buscarSubprueba(subpruebaCodigo);
 
@@ -162,51 +159,89 @@ public class MotorSubpruebasService {
                     "El tiempo límite para la subprueba " + subpruebaCodigo + " ha finalizado.");
         }
 
-        // Validar pregunta
-        Pregunta pregunta =
-                preguntaRepository
-                        .buscarPorId(request.preguntaId())
-                        .orElseThrow(
-                                () ->
-                                        new RespuestaInvalidaException(
-                                                "Pregunta inexistente: " + request.preguntaId()));
-
-        if (!pregunta.getSubpruebaCodigo().equalsIgnoreCase(subpruebaCodigo)) {
-            throw new RespuestaInvalidaException(
-                    "La pregunta "
-                            + request.preguntaId()
-                            + " no pertenece a la subprueba "
-                            + subpruebaCodigo);
+        List<ItemRespuestaDto> items =
+                request != null ? request.obtenerListaRespuestas() : List.of();
+        if (items.isEmpty()) {
+            throw new SolicitudInvalidaException(
+                    "El identificador de pregunta es obligatorio.",
+                    "preguntaId",
+                    "preguntaId es obligatorio");
         }
 
-        if (pregunta.getTipoRespuesta() == TipoRespuesta.SELECCION) {
-            if (request.opcionId() != null && !pregunta.tieneOpcion(request.opcionId())) {
-                throw new RespuestaInvalidaException(
-                        "La opción seleccionada no pertenece a la pregunta.");
+        for (ItemRespuestaDto item : items) {
+            if (item.preguntaId() == null || item.preguntaId().isBlank()) {
+                throw new SolicitudInvalidaException(
+                        "El identificador de pregunta es obligatorio.",
+                        "preguntaId",
+                        "preguntaId es obligatorio");
             }
+
+            Pregunta pregunta =
+                    preguntaRepository
+                            .buscarPorId(item.preguntaId())
+                            .orElseThrow(
+                                    () ->
+                                            new RespuestaInvalidaException(
+                                                    "preguntaId",
+                                                    "Pregunta inexistente: " + item.preguntaId()));
+
+            if (!pregunta.getSubpruebaCodigo().equalsIgnoreCase(subpruebaCodigo)) {
+                throw new RespuestaInvalidaException(
+                        "preguntaId",
+                        "La pregunta "
+                                + item.preguntaId()
+                                + " no pertenece a la subprueba "
+                                + subpruebaCodigo);
+            }
+
+            String opcionIdAGuardar = null;
+            String valorTextoAGuardar = item.valorTexto();
+            String opcionEntrada = item.opcion() != null ? item.opcion() : item.opcionId();
+
+            if (pregunta.getTipoRespuesta() == TipoRespuesta.SELECCION) {
+                if (opcionEntrada == null || opcionEntrada.isBlank()) {
+                    throw new RespuestaInvalidaException("opcion", "La opción es obligatoria.");
+                }
+                Optional<Opcion> match =
+                        pregunta.getOpciones().stream()
+                                .filter(
+                                        o ->
+                                                o.getEtiqueta().equalsIgnoreCase(opcionEntrada)
+                                                        || o.getId()
+                                                                .equalsIgnoreCase(opcionEntrada))
+                                .findFirst();
+                if (match.isEmpty()) {
+                    throw new RespuestaInvalidaException(
+                            "opcion", "La opción seleccionada no pertenece a la pregunta.");
+                }
+                opcionIdAGuardar = match.get().getId();
+            } else {
+                if (valorTextoAGuardar == null && opcionEntrada != null) {
+                    valorTextoAGuardar = opcionEntrada;
+                }
+            }
+
+            int ordenEntrada = item.ordenEntrada() == null ? 1 : item.ordenEntrada();
+
+            Optional<RespuestaEvaluacion> existente =
+                    respuestaRepository.buscarRespuesta(
+                            evaluacionId, subpruebaCodigo, item.preguntaId(), ordenEntrada);
+
+            Long respuestaId = existente.map(RespuestaEvaluacion::getId).orElse(null);
+
+            RespuestaEvaluacion entidadAGuardar =
+                    new RespuestaEvaluacion(
+                            respuestaId,
+                            evaluacionId,
+                            subpruebaCodigo,
+                            item.preguntaId(),
+                            opcionIdAGuardar,
+                            valorTextoAGuardar,
+                            ordenEntrada,
+                            ahora);
+
+            respuestaRepository.guardar(entidadAGuardar);
         }
-
-        int ordenEntrada = request.ordenEntrada() == null ? 1 : request.ordenEntrada();
-
-        // Idempotencia: buscar si ya existe respuesta previa
-        Optional<RespuestaEvaluacion> existente =
-                respuestaRepository.buscarRespuesta(
-                        evaluacionId, subpruebaCodigo, request.preguntaId(), ordenEntrada);
-
-        Long respuestaId = existente.map(RespuestaEvaluacion::getId).orElse(null);
-
-        RespuestaEvaluacion entidadAGuardar =
-                new RespuestaEvaluacion(
-                        respuestaId,
-                        evaluacionId,
-                        subpruebaCodigo,
-                        request.preguntaId(),
-                        request.opcionId(),
-                        request.valorTexto(),
-                        ordenEntrada,
-                        ahora);
-
-        respuestaRepository.guardar(entidadAGuardar);
 
         long totalRespondidas =
                 respuestaRepository.contarPorEvaluacionYSubprueba(evaluacionId, subpruebaCodigo);
@@ -215,7 +250,7 @@ public class MotorSubpruebasService {
         return new AvanceSubpruebaResponseDto(
                 evaluacionId,
                 subpruebaCodigo,
-                request.preguntaId(),
+                items.get(0).preguntaId(),
                 totalRespondidas,
                 totalPreguntas,
                 true);
@@ -231,4 +266,3 @@ public class MotorSubpruebasService {
                                         "Evaluación no encontrada: " + evaluacionId));
     }
 }
-
