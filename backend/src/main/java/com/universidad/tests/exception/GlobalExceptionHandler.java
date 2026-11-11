@@ -37,6 +37,22 @@ public class GlobalExceptionHandler {
                                 List.of(new DetalleErrorDto("letraInicial", ex.getMessage()))));
     }
 
+    @ExceptionHandler(com.universidad.tests.domain.exception.AccesoEvaluacionException.class)
+    public ResponseEntity<ErrorResponseDto> handleAcceso(
+            com.universidad.tests.domain.exception.AccesoEvaluacionException ex,
+            HttpServletRequest request) {
+        int status = ex.isAutenticado() ? 403 : 401;
+        return ResponseEntity.status(status)
+                .body(
+                        new ErrorResponseDto(
+                                Instant.now(),
+                                status,
+                                ex.isAutenticado() ? "SIN_PERMISO" : "NO_AUTENTICADO",
+                                ex.getMessage(),
+                                request.getRequestURI(),
+                                null));
+    }
+
     @ExceptionHandler(RecursoNoEncontradoException.class)
     public ResponseEntity<ErrorResponseDto> handleRecursoNoEncontrado(
             RecursoNoEncontradoException ex, HttpServletRequest request) {

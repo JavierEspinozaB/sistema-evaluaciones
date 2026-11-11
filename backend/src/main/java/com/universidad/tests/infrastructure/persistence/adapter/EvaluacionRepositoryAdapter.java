@@ -16,14 +16,26 @@ import org.springframework.stereotype.Component;
 @Component
 public class EvaluacionRepositoryAdapter implements EvaluacionRepository {
 
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
     private final SpringDataEvaluacionRepository evaluacionRepo;
     private final SpringDataSubpruebaRepository subpruebaRepo;
 
     public EvaluacionRepositoryAdapter(
             SpringDataEvaluacionRepository evaluacionRepo,
-            SpringDataSubpruebaRepository subpruebaRepo) {
+            SpringDataSubpruebaRepository subpruebaRepo,
+            org.springframework.jdbc.core.JdbcTemplate jdbc) {
+        this.jdbc = jdbc;
         this.evaluacionRepo = evaluacionRepo;
         this.subpruebaRepo = subpruebaRepo;
+    }
+
+    @Override
+    public List<String> listarConVencidas(Instant ahora, int limite) {
+        return jdbc.queryForList(
+                "SELECT DISTINCT evaluacion_id FROM evaluacion_subprueba WHERE estado='ACTIVA' AND fecha_fin_limite <= ? ORDER BY evaluacion_id LIMIT ?",
+                String.class,
+                java.sql.Timestamp.from(ahora),
+                limite);
     }
 
     @Override
@@ -76,7 +88,7 @@ public class EvaluacionRepositoryAdapter implements EvaluacionRepository {
                             entity.setFechaInicio(subprueba.getFechaInicio());
                             entity.setFechaFinLimite(subprueba.getFechaFinLimite());
                             entity.setFechaCierre(subprueba.getFechaCierre());
-                            subpruebaRepo.save(entity);
+                            subpruebaRepo.saveAndFlush(entity);
                         });
     }
 
@@ -96,22 +108,37 @@ public class EvaluacionRepositoryAdapter implements EvaluacionRepository {
     }
 
     private EvaluacionSubprueba toDomainSubprueba(EvaluacionSubpruebaEntity entity) {
-        EvaluacionSubprueba subprueba =
-                new EvaluacionSubprueba(
-                        entity.getId(),
-                        entity.getEvaluacion().getId(),
-                        entity.getCodigo(),
-                        entity.getNombre(),
-                        entity.getOrden(),
-                        entity.getDuracionSegundos(),
-                        EstadoSubprueba.valueOf(entity.getEstado()),
-                        entity.getInstrucciones(),
-                        entity.isPermitirRetroceso(),
-                        entity.getFechaInicio(),
-                        entity.getFechaFinLimite(),
-                        entity.getFechaCierre());
-        subprueba.setLetraInicial(entity.getLetraInicial());
-        subprueba.setMaximoEntradas(entity.getMaximoEntradas());
-        return subprueba;
+        return jdbc.queryForObject(
+                "SELECT c.orden_aplicacion,c.tiempo_limite_segundos,c.instrucciones_ref,c.maximo_entradas,s.codigo,s.nombre FROM configuracion_subprueba c JOIN subprueba s ON s.id_subprueba=c.id_subprueba JOIN version_formulario v ON v.id_version_formulario=c.id_version_formulario WHERE c.id_configuracion_subprueba=? AND v.id_version_formulario::text=? AND v.id_test::text=? AND v.estado IN ('PUBLICADA','RETIRADA')",
+                (rs, n) -> {
+                    if (!rs.getString("codigo").equalsIgnoreCase(entity.getCodigo())
+                            || rs.getObject("tiempo_limite_segundos") == null)
+                        throw new IllegalStateException(
+                                "Configuración de aplicación incompatible con el catálogo.");
+                    EvaluacionSubprueba configurada =
+                            new EvaluacionSubprueba(
+                                    entity.getId(),
+                                    entity.getEvaluacion().getId(),
+                                    rs.getString("codigo"),
+                                    rs.getString("nombre"),
+                                    rs.getInt("orden_aplicacion"),
+                                    rs.getInt("tiempo_limite_segundos"),
+                                    EstadoSubprueba.valueOf(entity.getEstado()),
+                                    rs.getString("instrucciones_ref"),
+                                    entity.isPermitirRetroceso(),
+                                    entity.getFechaInicio(),
+                                    entity.getFechaFinLimite(),
+                                    entity.getFechaCierre());
+                    configurada.setConfiguracionId(entity.getConfiguracionId());
+                    configurada.setLetraInicial(entity.getLetraInicial());
+                    configurada.setMaximoEntradas(
+                            rs.getObject("maximo_entradas") == null
+                                    ? 75
+                                    : Math.min(75, rs.getInt("maximo_entradas")));
+                    return configurada;
+                },
+                entity.getConfiguracionId(),
+                entity.getEvaluacion().getVersionFormularioId(),
+                entity.getEvaluacion().getTestId());
     }
 }

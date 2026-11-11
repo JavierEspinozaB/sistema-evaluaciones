@@ -108,7 +108,7 @@ public class MotorSubpruebasMapper {
                         .map(
                                 p ->
                                         new PreguntaResponseDto(
-                                                p.getId(),
+                                                Long.valueOf(p.getId()),
                                                 p.getNumero(),
                                                 p.getEnunciado(),
                                                 p.getTipoRespuesta().name(),
@@ -129,7 +129,11 @@ public class MotorSubpruebasMapper {
                 .map(
                         o ->
                                 new OpcionResponseDto(
-                                        o.getEtiqueta(), o.getTexto(), o.getId(), o.getEtiqueta()))
+                                        o.getEtiqueta(),
+                                        o.getTexto(),
+                                        o.getId(),
+                                        o.getEtiqueta(),
+                                        o.getRecursoUrl()))
                 .toList();
     }
 }

@@ -11,6 +11,7 @@ CREATE TABLE evaluacion (
 CREATE TABLE evaluacion_subprueba (
     id BIGSERIAL PRIMARY KEY,
     evaluacion_id VARCHAR(50) NOT NULL REFERENCES evaluacion(id) ON DELETE CASCADE,
+    configuracion_id BIGINT NOT NULL REFERENCES configuracion_subprueba(id_configuracion_subprueba),
     codigo VARCHAR(50) NOT NULL,
     nombre VARCHAR(100) NOT NULL,
     orden INT NOT NULL,
@@ -24,31 +25,12 @@ CREATE TABLE evaluacion_subprueba (
     CONSTRAINT uk_eval_subprueba UNIQUE (evaluacion_id, codigo)
 );
 
-CREATE TABLE pregunta_catalogo (
-    id VARCHAR(50) PRIMARY KEY,
-    subprueba_codigo VARCHAR(50) NOT NULL,
-    numero INT NOT NULL,
-    enunciado TEXT NOT NULL,
-    recurso_multimedia TEXT,
-    tipo_respuesta VARCHAR(30) NOT NULL DEFAULT 'SELECCION',
-    clave_correcta VARCHAR(255),
-    orden INT NOT NULL
-);
-
-CREATE TABLE opcion_pregunta (
-    id VARCHAR(50) PRIMARY KEY,
-    pregunta_id VARCHAR(50) NOT NULL REFERENCES pregunta_catalogo(id) ON DELETE CASCADE,
-    etiqueta VARCHAR(10) NOT NULL,
-    texto TEXT NOT NULL,
-    orden INT NOT NULL
-);
-
 CREATE TABLE respuesta_evaluacion (
     id BIGSERIAL PRIMARY KEY,
     evaluacion_id VARCHAR(50) NOT NULL REFERENCES evaluacion(id) ON DELETE CASCADE,
     subprueba_codigo VARCHAR(50) NOT NULL,
-    pregunta_id VARCHAR(50) NOT NULL REFERENCES pregunta_catalogo(id),
-    opcion_id VARCHAR(50),
+    pregunta_id BIGINT NOT NULL REFERENCES pregunta(id_pregunta),
+    opcion_id BIGINT REFERENCES opcion_respuesta(id_opcion),
     valor_texto TEXT,
     orden_entrada INT NOT NULL DEFAULT 1,
     fecha_registro TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -56,7 +38,5 @@ CREATE TABLE respuesta_evaluacion (
 );
 
 CREATE INDEX idx_eval_subprueba_eval_id ON evaluacion_subprueba(evaluacion_id);
-CREATE INDEX idx_pregunta_subprueba ON pregunta_catalogo(subprueba_codigo);
-CREATE INDEX idx_opcion_pregunta ON opcion_pregunta(pregunta_id);
 CREATE INDEX idx_respuesta_eval ON respuesta_evaluacion(evaluacion_id, subprueba_codigo);
 

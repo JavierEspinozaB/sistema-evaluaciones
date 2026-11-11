@@ -19,6 +19,13 @@ public class EvaluacionSubpruebaEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "configuracion_id", nullable = false)
+    private Long configuracionId;
+
+    public Long getConfiguracionId() {
+        return configuracionId;
+    }
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "evaluacion_id", nullable = false)
     private EvaluacionEntity evaluacion;

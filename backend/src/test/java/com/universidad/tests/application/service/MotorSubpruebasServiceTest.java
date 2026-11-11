@@ -61,13 +61,15 @@ class MotorSubpruebasServiceTest {
                         preguntaRepository,
                         respuestaRepository,
                         mapper,
-                        reloj);
+                        reloj,
+                        autorizacion,
+                        solicitudes);
         assertThatThrownBy(
                         () ->
                                 motor.registrarRespuesta(
                                         "EV-01",
                                         "VOC1",
-                                        new RegistrarRespuestaRequestDto("P-01", "A", null, 1)))
+                                        new RegistrarRespuestaRequestDto("101", "A", null, 1)))
                 .isInstanceOf(TiempoAgotadoException.class);
         org.mockito.Mockito.verifyNoInteractions(respuestaRepository);
     }
@@ -79,12 +81,17 @@ class MotorSubpruebasServiceTest {
     private Clock clock;
     private Instant baseTime;
     private MotorSubpruebasService service;
+    private com.universidad.tests.domain.port.AutorizacionEvaluacionPort autorizacion;
+    private com.universidad.tests.domain.repository.SolicitudCalculoRepository solicitudes;
 
     @BeforeEach
     void setUp() {
         evaluacionRepository = mock(EvaluacionRepository.class);
         preguntaRepository = mock(PreguntaRepositoryAplicacion.class);
         respuestaRepository = mock(RespuestaRepository.class);
+        autorizacion = mock(com.universidad.tests.domain.port.AutorizacionEvaluacionPort.class);
+        solicitudes =
+                mock(com.universidad.tests.domain.repository.SolicitudCalculoRepository.class);
         mapper = new MotorSubpruebasMapper();
         baseTime = Instant.parse("2026-11-06T10:00:00Z");
         clock = Clock.fixed(baseTime, ZoneId.of("UTC"));
@@ -94,7 +101,9 @@ class MotorSubpruebasServiceTest {
                         preguntaRepository,
                         respuestaRepository,
                         mapper,
-                        clock);
+                        clock,
+                        autorizacion,
+                        solicitudes);
     }
 
     private Evaluacion crearEvaluacionMock(EstadoSubprueba estadoVoc1, EstadoSubprueba estadoVoc2) {
@@ -130,7 +139,9 @@ class MotorSubpruebasServiceTest {
                         null,
                         null);
 
-        return new Evaluacion("EV-01", "SUJETO-01", "EN_PROGRESO", List.of(voc1, voc2));
+        voc1.setConfiguracionId(1L);
+        voc2.setConfiguracionId(2L);
+        return new Evaluacion("EV-01", "SUJETO-01", "EN_CURSO", List.of(voc1, voc2));
     }
 
     @Test
@@ -174,24 +185,23 @@ class MotorSubpruebasServiceTest {
 
         PreguntaAplicacion p1 =
                 new PreguntaAplicacion(
-                        "P-01",
+                        "101",
                         "VOC1",
                         1,
                         "PreguntaAplicacion 1",
                         null,
                         TipoRespuestaAplicacion.SELECCION,
-                        "OPT-A",
                         1,
                         List.of(
                                 new Opcion("OPT-A", "A", "Opción A", 1),
                                 new Opcion("OPT-B", "B", "Opción B", 2)));
 
-        when(preguntaRepository.listarPorSubprueba("VOC1")).thenReturn(List.of(p1));
+        when(preguntaRepository.listarPorConfiguracion(1L)).thenReturn(List.of(p1));
         when(respuestaRepository.listarPorEvaluacionYSubprueba("EV-01", "VOC1"))
                 .thenReturn(
                         List.of(
                                 new RespuestaEvaluacion(
-                                        1L, "EV-01", "VOC1", "P-01", "OPT-B", null, 1, baseTime)));
+                                        1L, "EV-01", "VOC1", "101", "OPT-B", null, 1, baseTime)));
 
         PreguntasSubpruebaResponseDto result = service.consultarPreguntas("EV-01", "VOC1");
 
@@ -212,21 +222,20 @@ class MotorSubpruebasServiceTest {
 
         PreguntaAplicacion p1 =
                 new PreguntaAplicacion(
-                        "P-01",
+                        "101",
                         "VOC1",
                         1,
                         "PreguntaAplicacion 1",
                         null,
                         TipoRespuestaAplicacion.SELECCION,
-                        "OPT-A",
                         1,
                         List.of(new Opcion("OPT-A", "A", "Opción A", 1)));
-        when(preguntaRepository.buscarPorId("P-01")).thenReturn(Optional.of(p1));
+        when(preguntaRepository.buscarPorIdYConfiguracion("101", 1L)).thenReturn(Optional.of(p1));
         when(respuestaRepository.contarPorEvaluacionYSubprueba("EV-01", "VOC1")).thenReturn(1L);
-        when(preguntaRepository.listarPorSubprueba("VOC1")).thenReturn(List.of(p1));
+        when(preguntaRepository.listarPorConfiguracion(1L)).thenReturn(List.of(p1));
 
         RegistrarRespuestaRequestDto request =
-                new RegistrarRespuestaRequestDto("P-01", "OPT-A", null, 1);
+                new RegistrarRespuestaRequestDto("101", "OPT-A", null, 1);
 
         AvanceSubpruebaResponseDto avance = service.registrarRespuesta("EV-01", "VOC1", request);
 
@@ -250,10 +259,12 @@ class MotorSubpruebasServiceTest {
                         preguntaRepository,
                         respuestaRepository,
                         mapper,
-                        clockExpirado);
+                        clockExpirado,
+                        autorizacion,
+                        solicitudes);
 
         RegistrarRespuestaRequestDto request =
-                new RegistrarRespuestaRequestDto("P-01", "OPT-A", null, 1);
+                new RegistrarRespuestaRequestDto("101", "OPT-A", null, 1);
 
         assertThatThrownBy(() -> serviceExpirado.registrarRespuesta("EV-01", "VOC1", request))
                 .isInstanceOf(TiempoAgotadoException.class);
@@ -282,7 +293,7 @@ class MotorSubpruebasServiceTest {
         when(evaluacionRepository.buscarPorId("EV-01")).thenReturn(Optional.of(evaluacion));
 
         RegistrarRespuestaRequestDto request =
-                new RegistrarRespuestaRequestDto("P-01", "OPT-A", null, 1);
+                new RegistrarRespuestaRequestDto("101", "OPT-A", null, 1);
 
         assertThatThrownBy(() -> service.registrarRespuesta("EV-01", "VOC1", request))
                 .isInstanceOf(SubpruebaNoActivaException.class);
@@ -298,19 +309,19 @@ class MotorSubpruebasServiceTest {
 
         PreguntaAplicacion pVoc2 =
                 new PreguntaAplicacion(
-                        "P-VOC2-01",
+                        "201",
                         "VOC2",
                         1,
                         "PreguntaAplicacion VOC2",
                         null,
                         TipoRespuestaAplicacion.SELECCION,
-                        "OPT-A",
                         1,
                         List.of());
-        when(preguntaRepository.buscarPorId("P-VOC2-01")).thenReturn(Optional.of(pVoc2));
+        when(preguntaRepository.buscarPorIdYConfiguracion("201", 1L))
+                .thenReturn(Optional.of(pVoc2));
 
         RegistrarRespuestaRequestDto request =
-                new RegistrarRespuestaRequestDto("P-VOC2-01", "OPT-A", null, 1);
+                new RegistrarRespuestaRequestDto("201", "OPT-A", null, 1);
 
         assertThatThrownBy(() -> service.registrarRespuesta("EV-01", "VOC1", request))
                 .isInstanceOf(RespuestaInvalidaException.class);
@@ -356,16 +367,15 @@ class MotorSubpruebasServiceTest {
         // Opción ajena
         PreguntaAplicacion p1 =
                 new PreguntaAplicacion(
-                        "P-01",
+                        "101",
                         "VOC1",
                         1,
                         "PreguntaAplicacion 1",
                         null,
                         TipoRespuestaAplicacion.SELECCION,
-                        "OPT-A",
                         1,
                         List.of(new Opcion("OPT-A", "A", "Opción A", 1)));
-        when(preguntaRepository.buscarPorId("P-01")).thenReturn(Optional.of(p1));
+        when(preguntaRepository.buscarPorIdYConfiguracion("101", 1L)).thenReturn(Optional.of(p1));
 
         assertThatThrownBy(
                         () ->
@@ -373,7 +383,7 @@ class MotorSubpruebasServiceTest {
                                         "EV-01",
                                         "VOC1",
                                         new RegistrarRespuestaRequestDto(
-                                                "P-01", "OPT-AJENA", null, 1)))
+                                                "101", "OPT-AJENA", null, 1)))
                 .isInstanceOf(RespuestaInvalidaException.class)
                 .hasFieldOrPropertyWithValue("campo", "opcion");
     }
@@ -413,7 +423,7 @@ class MotorSubpruebasServiceTest {
                         null);
 
         Evaluacion evaluacion =
-                new Evaluacion("EV-01", "SUJETO-01", "EN_PROGRESO", List.of(voc1, voc2));
+                new Evaluacion("EV-01", "SUJETO-01", "EN_CURSO", List.of(voc1, voc2));
         when(evaluacionRepository.buscarPorId("EV-01")).thenReturn(Optional.of(evaluacion));
 
         SubpruebaResponseDto result = service.iniciarSubprueba("EV-01", "VOC2");
@@ -435,22 +445,21 @@ class MotorSubpruebasServiceTest {
 
         PreguntaAplicacion p1 =
                 new PreguntaAplicacion(
-                        "P-01",
+                        "101",
                         "VOC1",
                         1,
                         "PreguntaAplicacion 1",
                         null,
                         TipoRespuestaAplicacion.SELECCION,
-                        "OPT-A",
                         1,
                         List.of(new Opcion("OPT-A", "A", "Opción A", 1)));
-        when(preguntaRepository.buscarPorId("P-01")).thenReturn(Optional.of(p1));
-        when(preguntaRepository.listarPorSubprueba("VOC1")).thenReturn(List.of(p1));
+        when(preguntaRepository.buscarPorIdYConfiguracion("101", 1L)).thenReturn(Optional.of(p1));
+        when(preguntaRepository.listarPorConfiguracion(1L)).thenReturn(List.of(p1));
         when(respuestaRepository.contarPorEvaluacionYSubprueba("EV-01", "VOC1")).thenReturn(1L);
 
         RegistrarRespuestaRequestDto request =
                 new RegistrarRespuestaRequestDto(
-                        List.of(new com.universidad.tests.dto.ItemRespuestaDto("P-01", "A")));
+                        List.of(new com.universidad.tests.dto.ItemRespuestaDto("101", "A")));
 
         AvanceSubpruebaResponseDto response = service.registrarRespuesta("EV-01", "VOC1", request);
 

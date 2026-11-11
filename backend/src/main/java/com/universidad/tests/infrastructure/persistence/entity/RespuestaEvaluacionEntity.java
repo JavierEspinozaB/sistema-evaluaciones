@@ -22,11 +22,11 @@ public class RespuestaEvaluacionEntity {
     @Column(name = "subprueba_codigo", nullable = false, length = 50)
     private String subpruebaCodigo;
 
-    @Column(name = "pregunta_id", length = 50)
-    private String preguntaId;
+    @Column(name = "pregunta_id")
+    private Long preguntaId;
 
-    @Column(name = "opcion_id", length = 50)
-    private String opcionId;
+    @Column(name = "opcion_id")
+    private Long opcionId;
 
     @Column(name = "valor_texto", columnDefinition = "TEXT")
     private String valorTexto;
@@ -63,19 +63,19 @@ public class RespuestaEvaluacionEntity {
         this.subpruebaCodigo = subpruebaCodigo;
     }
 
-    public String getPreguntaId() {
+    public Long getPreguntaId() {
         return preguntaId;
     }
 
-    public void setPreguntaId(String preguntaId) {
+    public void setPreguntaId(Long preguntaId) {
         this.preguntaId = preguntaId;
     }
 
-    public String getOpcionId() {
+    public Long getOpcionId() {
         return opcionId;
     }
 
-    public void setOpcionId(String opcionId) {
+    public void setOpcionId(Long opcionId) {
         this.opcionId = opcionId;
     }
 

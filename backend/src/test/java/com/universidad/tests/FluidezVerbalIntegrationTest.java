@@ -23,23 +23,23 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 /** Regresión BUG-03 con PostgreSQL real, Flyway, HTTP y transacciones independientes. */
-@SpringBootTest
+@SpringBootTest(properties = "motor.temporizador.habilitado=false")
 @AutoConfigureMockMvc
 class FluidezVerbalIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
     @Autowired MotorSubpruebasService motor;
     private String id;
+    private CatalogoMotorFixture catalogo;
+
+    @org.springframework.boot.test.mock.mockito.MockBean
+    com.universidad.tests.domain.port.AutorizacionEvaluacionPort autorizacion;
 
     @BeforeEach
     void preparar() {
         id = "FV-TEST-" + UUID.randomUUID();
-        jdbc.update(
-                "INSERT INTO evaluacion(id,sujeto_id,estado,creado_en,actualizado_en,test_id,periodo_id,version_formulario_id,fecha_inicio) VALUES (?, 'FICTICIO','EN_CURSO',now(),now(),'TEST','PERIODO','FORMULARIO',now())",
-                id);
-        jdbc.update(
-                "INSERT INTO evaluacion_subprueba(evaluacion_id,codigo,nombre,orden,duracion_segundos,estado,instrucciones,permitir_retroceso,letra_inicial) VALUES (?,'FV','Fluidez ficticia',1,300,'PENDIENTE','Instrucciones con la letra M',true,'P')",
-                id);
+        catalogo = CatalogoMotorFixture.crear(jdbc);
+        catalogo.evaluacion(jdbc, id, "FV", catalogo.fv());
     }
 
     @AfterEach
@@ -73,9 +73,11 @@ class FluidezVerbalIntegrationTest {
         assertThat(segunda.letraInicial()).isEqualTo("P");
         mvc.perform(get("/api/v1/evaluaciones/" + id))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.testId").value("TEST"))
-                .andExpect(jsonPath("$.periodoId").value("PERIODO"))
-                .andExpect(jsonPath("$.versionFormularioId").value("FORMULARIO"))
+                .andExpect(jsonPath("$.testId").value(Long.toString(catalogo.testId())))
+                .andExpect(jsonPath("$.periodoId").value("1"))
+                .andExpect(
+                        jsonPath("$.versionFormularioId")
+                                .value(Long.toString(catalogo.versionId())))
                 .andExpect(jsonPath("$.fechaInicio").isNotEmpty())
                 .andExpect(jsonPath("$.subpruebaActiva.codigo").value("FV"));
     }
@@ -100,8 +102,9 @@ class FluidezVerbalIntegrationTest {
         iniciar();
         assertThat(
                         jdbc.queryForObject(
-                                "SELECT count(*) FROM pregunta_catalogo WHERE subprueba_codigo = 'FV'",
-                                Long.class))
+                                "SELECT count(*) FROM pregunta WHERE id_configuracion_subprueba = ?",
+                                Long.class,
+                                catalogo.fv()))
                 .isZero();
         enviar(
                         "{\"palabras\":[{\"ordenEntrada\":3,\"texto\":\" montaña \"},{\"ordenEntrada\":1,\"texto\":\"mesa\"}]}")
@@ -190,7 +193,7 @@ class FluidezVerbalIntegrationTest {
     void vencimientoPersisteCierreYNoGuardaPalabrasTardias() throws Exception {
         iniciar();
         jdbc.update(
-                "UPDATE evaluacion_subprueba SET fecha_fin_limite = now() - interval '1 second' WHERE evaluacion_id = ?",
+                "UPDATE evaluacion_subprueba SET fecha_inicio = now() - interval '301 seconds', fecha_fin_limite = now() - interval '1 second' WHERE evaluacion_id = ?",
                 id);
         enviar("{\"palabras\":[{\"ordenEntrada\":1,\"texto\":\"tardia\"}]}")
                 .andExpect(status().isConflict())

@@ -35,7 +35,8 @@ import org.springframework.transaction.annotation.Transactional;
         noRollbackFor = {
             TiempoAgotadoException.class,
             SubpruebaCerradaException.class,
-            SubpruebaNoActivaException.class
+            SubpruebaNoActivaException.class,
+            com.universidad.tests.domain.exception.SubpruebaFueraDeOrdenException.class
         })
 public class MotorSubpruebasService {
 
@@ -44,23 +45,30 @@ public class MotorSubpruebasService {
     private final RespuestaRepository respuestaRepository;
     private final MotorSubpruebasMapper mapper;
     private final Clock clock;
+    private final com.universidad.tests.domain.port.AutorizacionEvaluacionPort autorizacion;
+    private final com.universidad.tests.domain.repository.SolicitudCalculoRepository solicitudes;
 
     public MotorSubpruebasService(
             EvaluacionRepository evaluacionRepository,
             PreguntaRepositoryAplicacion preguntaRepository,
             RespuestaRepository respuestaRepository,
             MotorSubpruebasMapper mapper,
-            Clock clock) {
+            Clock clock,
+            com.universidad.tests.domain.port.AutorizacionEvaluacionPort autorizacion,
+            com.universidad.tests.domain.repository.SolicitudCalculoRepository solicitudes) {
         this.evaluacionRepository = evaluacionRepository;
         this.preguntaRepository = preguntaRepository;
         this.respuestaRepository = respuestaRepository;
         this.mapper = mapper;
         this.clock = clock;
+        this.autorizacion = autorizacion;
+        this.solicitudes = solicitudes;
     }
 
     public EvaluacionResponseDto consultarEvaluacion(String evaluacionId) {
+        autorizacion.exigirAcceso(evaluacionId);
         Evaluacion evaluacion = obtenerEvaluacionOError(evaluacionId);
-        Instant ahora = clock.instant();
+        Instant ahora = clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         cerrarVencidas(evaluacion, ahora);
         return mapper.toEvaluacionDto(evaluacion, ahora);
     }
@@ -70,17 +78,29 @@ public class MotorSubpruebasService {
             if (sub.getEstado() == EstadoSubprueba.ACTIVA && sub.haExpirado(ahora)) {
                 sub.cerrar(ahora);
                 evaluacionRepository.guardarSubprueba(sub);
+                solicitudes.registrar(sub.getId());
             }
         }
     }
 
     public SubpruebaResponseDto iniciarSubprueba(String evaluacionId, String subpruebaCodigo) {
+        autorizacion.exigirAcceso(evaluacionId);
         Evaluacion evaluacion = obtenerEvaluacionOError(evaluacionId);
-        Instant ahora = clock.instant();
+        Instant ahora = clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+        if (!"EN_CURSO".equals(evaluacion.getEstado()))
+            throw new SubpruebaCerradaException("La evaluación no está en curso.");
         cerrarVencidas(evaluacion, ahora);
         EvaluacionSubprueba subprueba = evaluacion.buscarSubprueba(subpruebaCodigo);
         if (subprueba.getEstado() == EstadoSubprueba.CERRADA) {
             throw new SubpruebaCerradaException("La subprueba ya está cerrada.");
+        }
+        if (evaluacion.getSubpruebas().stream()
+                .anyMatch(
+                        s ->
+                                s.getEstado() == EstadoSubprueba.ACTIVA
+                                        && !s.getCodigo().equalsIgnoreCase(subpruebaCodigo))) {
+            throw new com.universidad.tests.domain.exception.SubpruebaFueraDeOrdenException(
+                    "HAY_SUBPRUEBA_ACTIVA", "Ya existe otra subprueba activa.");
         }
         evaluacion.validarOrdenSubprueba(subpruebaCodigo);
         if (subprueba.esFluidezVerbal()
@@ -95,13 +115,17 @@ public class MotorSubpruebasService {
 
     public PreguntasSubpruebaResponseDto consultarPreguntas(
             String evaluacionId, String subpruebaCodigo) {
+        autorizacion.exigirAcceso(evaluacionId);
         Evaluacion evaluacion = obtenerEvaluacionOError(evaluacionId);
-        Instant ahora = clock.instant();
+        Instant ahora = clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         EvaluacionSubprueba subprueba = evaluacion.buscarSubprueba(subpruebaCodigo);
+        if (!"EN_CURSO".equals(evaluacion.getEstado()))
+            throw new SubpruebaNoActivaException("La evaluación no está en curso.");
 
         if (subprueba.getEstado() == EstadoSubprueba.ACTIVA && subprueba.haExpirado(ahora)) {
             subprueba.cerrar(ahora);
             evaluacionRepository.guardarSubprueba(subprueba);
+            solicitudes.registrar(subprueba.getId());
             throw new SubpruebaNoActivaException(
                     "El tiempo de la subprueba " + subpruebaCodigo + " ha finalizado.");
         }
@@ -111,7 +135,8 @@ public class MotorSubpruebasService {
                     "La subprueba " + subpruebaCodigo + " no se encuentra activa.");
         }
 
-        List<PreguntaAplicacion> preguntas = preguntaRepository.listarPorSubprueba(subpruebaCodigo);
+        List<PreguntaAplicacion> preguntas =
+                preguntaRepository.listarPorConfiguracion(subprueba.getConfiguracionId());
         List<RespuestaEvaluacion> respuestas =
                 respuestaRepository.listarPorEvaluacionYSubprueba(evaluacionId, subpruebaCodigo);
 
@@ -120,9 +145,12 @@ public class MotorSubpruebasService {
 
     public AvanceSubpruebaResponseDto registrarRespuesta(
             String evaluacionId, String subpruebaCodigo, RegistrarRespuestaRequestDto request) {
+        autorizacion.exigirAcceso(evaluacionId);
         Evaluacion evaluacion = obtenerEvaluacionOError(evaluacionId);
-        Instant ahora = clock.instant();
+        Instant ahora = clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         EvaluacionSubprueba subprueba = evaluacion.buscarSubprueba(subpruebaCodigo);
+        if (!"EN_CURSO".equals(evaluacion.getEstado()))
+            throw new SubpruebaNoActivaException("La evaluación no está en curso.");
 
         if (subprueba.getEstado() == EstadoSubprueba.CERRADA) {
             throw new SubpruebaNoActivaException(
@@ -137,6 +165,7 @@ public class MotorSubpruebasService {
         if (subprueba.haExpirado(ahora)) {
             subprueba.cerrar(ahora);
             evaluacionRepository.guardarSubprueba(subprueba);
+            solicitudes.registrar(subprueba.getId());
             throw new TiempoAgotadoException(
                     "El tiempo límite para la subprueba " + subpruebaCodigo + " ha finalizado.");
         }
@@ -159,6 +188,7 @@ public class MotorSubpruebasService {
                     "preguntaId es obligatorio");
         }
 
+        java.util.Set<String> preguntasIncluidas = new java.util.HashSet<>();
         for (ItemRespuestaDto item : items) {
             if (item == null || item.preguntaId() == null || item.preguntaId().isBlank()) {
                 throw new SolicitudInvalidaException(
@@ -167,14 +197,23 @@ public class MotorSubpruebasService {
                         "preguntaId es obligatorio");
             }
 
+            if (!preguntasIncluidas.add(item.preguntaId())
+                    || (item.ordenEntrada() != null && item.ordenEntrada() != 1)) {
+                throw new SolicitudInvalidaException(
+                        "Cada pregunta admite una sola respuesta por solicitud.",
+                        "respuestas",
+                        "No repita preguntas ni use ordenEntrada distinto de 1.");
+            }
             PreguntaAplicacion pregunta =
                     preguntaRepository
-                            .buscarPorId(item.preguntaId())
+                            .buscarPorIdYConfiguracion(
+                                    item.preguntaId(), subprueba.getConfiguracionId())
                             .orElseThrow(
                                     () ->
                                             new RespuestaInvalidaException(
                                                     "preguntaId",
-                                                    "PreguntaAplicacion inexistente: " + item.preguntaId()));
+                                                    "Pregunta no perteneciente a la configuración aplicada: "
+                                                            + item.preguntaId()));
 
             if (!pregunta.getSubpruebaCodigo().equalsIgnoreCase(subpruebaCodigo)) {
                 throw new RespuestaInvalidaException(
@@ -212,11 +251,14 @@ public class MotorSubpruebasService {
                 }
             }
 
-            int ordenEntrada = item.ordenEntrada() == null ? 1 : item.ordenEntrada();
+            if (pregunta.getTipoRespuesta() != TipoRespuestaAplicacion.SELECCION
+                    && (valorTextoAGuardar == null || valorTextoAGuardar.isBlank()))
+                throw new RespuestaInvalidaException("valorTexto", "El texto es obligatorio.");
+            int ordenEntrada = 1;
 
             Optional<RespuestaEvaluacion> existente =
                     respuestaRepository.buscarRespuesta(
-                            evaluacionId, subpruebaCodigo, item.preguntaId(), ordenEntrada);
+                            evaluacionId, subprueba.getCodigo(), item.preguntaId(), ordenEntrada);
 
             Long respuestaId = existente.map(RespuestaEvaluacion::getId).orElse(null);
 
@@ -224,7 +266,7 @@ public class MotorSubpruebasService {
                     new RespuestaEvaluacion(
                             respuestaId,
                             evaluacionId,
-                            subpruebaCodigo,
+                            subprueba.getCodigo(),
                             item.preguntaId(),
                             opcionIdAGuardar,
                             valorTextoAGuardar,
@@ -236,7 +278,8 @@ public class MotorSubpruebasService {
 
         long totalRespondidas =
                 respuestaRepository.contarPorEvaluacionYSubprueba(evaluacionId, subpruebaCodigo);
-        int totalPreguntas = preguntaRepository.listarPorSubprueba(subpruebaCodigo).size();
+        int totalPreguntas =
+                preguntaRepository.listarPorConfiguracion(subprueba.getConfiguracionId()).size();
 
         return new AvanceSubpruebaResponseDto(
                 evaluacionId,
@@ -310,6 +353,15 @@ public class MotorSubpruebasService {
                 codigo,
                 request.palabras().size(),
                 subprueba.calcularSegundosRestantes(ahora));
+    }
+
+    /**
+     * Entrada interna del temporizador: no se publica como endpoint ni requiere sesión de usuario.
+     */
+    public void procesarVencimiento(String evaluacionId) {
+        Evaluacion evaluacion = obtenerEvaluacionOError(evaluacionId);
+        cerrarVencidas(
+                evaluacion, clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
     }
 
     private Evaluacion obtenerEvaluacionOError(String evaluacionId) {

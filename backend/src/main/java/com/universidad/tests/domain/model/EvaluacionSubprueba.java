@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.Instant;
 
 public class EvaluacionSubprueba {
+    private Long configuracionId;
     private final Long id;
     private final String evaluacionId;
     private final String codigo;
@@ -55,8 +56,8 @@ public class EvaluacionSubprueba {
             return;
         }
         this.estado = EstadoSubprueba.ACTIVA;
-        this.fechaInicio = ahora;
-        this.fechaFinLimite = ahora.plus(Duration.ofSeconds(duracionSegundos));
+        this.fechaInicio = ahora.truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+        this.fechaFinLimite = fechaInicio.plus(Duration.ofSeconds(duracionSegundos));
     }
 
     public void cerrar(Instant ahora) {
@@ -77,6 +78,14 @@ public class EvaluacionSubprueba {
         }
         long restantes = Duration.between(ahora, fechaFinLimite).getSeconds();
         return Math.max(0, restantes);
+    }
+
+    public Long getConfiguracionId() {
+        return configuracionId;
+    }
+
+    public void setConfiguracionId(Long value) {
+        configuracionId = value;
     }
 
     public boolean esFluidezVerbal() {

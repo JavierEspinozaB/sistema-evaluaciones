@@ -1,6 +1,17 @@
 package com.universidad.tests.domain.model;
 
 public class Opcion {
+    private String recursoUrl;
+
+    public String getRecursoUrl() {
+        return recursoUrl;
+    }
+
+    public Opcion(String id, String etiqueta, String texto, int orden, String recursoUrl) {
+        this(id, etiqueta, texto, orden);
+        this.recursoUrl = recursoUrl;
+    }
+
     private final String id;
     private final String etiqueta;
     private final String texto;

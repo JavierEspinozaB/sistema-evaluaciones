@@ -10,7 +10,6 @@ public class PreguntaAplicacion {
     private final String enunciado;
     private final String recursoMultimedia;
     private final TipoRespuestaAplicacion tipoRespuesta;
-    private final String claveCorrecta;
     private final int orden;
     private final List<Opcion> opciones;
 
@@ -21,7 +20,6 @@ public class PreguntaAplicacion {
             String enunciado,
             String recursoMultimedia,
             TipoRespuestaAplicacion tipoRespuesta,
-            String claveCorrecta,
             int orden,
             List<Opcion> opciones) {
         this.id = id;
@@ -30,7 +28,6 @@ public class PreguntaAplicacion {
         this.enunciado = enunciado;
         this.recursoMultimedia = recursoMultimedia;
         this.tipoRespuesta = tipoRespuesta;
-        this.claveCorrecta = claveCorrecta;
         this.orden = orden;
         this.opciones = opciones == null ? Collections.emptyList() : List.copyOf(opciones);
     }
@@ -57,10 +54,6 @@ public class PreguntaAplicacion {
 
     public TipoRespuestaAplicacion getTipoRespuesta() {
         return tipoRespuesta;
-    }
-
-    public String getClaveCorrecta() {
-        return claveCorrecta;
     }
 
     public int getOrden() {

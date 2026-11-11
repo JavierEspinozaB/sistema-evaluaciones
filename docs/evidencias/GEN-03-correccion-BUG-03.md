@@ -1,5 +1,7 @@
 # GEN-03 — Corrección de BUG-03 y contrato de Fluidez Verbal
 
+> Evidencia histórica de la corrección del PR #34. Para la entrega posterior de backend y la adaptación al catálogo GEN-07, consultar [GEN-03-BE-implementacion.md](GEN-03-BE-implementacion.md). Las observaciones sobre esquema y frontend de esta evidencia describen aquella versión anterior.
+
 Fecha: 2026-11-10 (Managua). Rama: `feature/javier-espinoza-GEN-03`.
 Base incorporada: `upstream/main` en `5093a48`, mediante merge local.
 Fuentes: `docs/api/openapi.yaml` y `docs/pruebas/GEN-03-casos-prueba-v3.md`.

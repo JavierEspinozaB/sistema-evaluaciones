@@ -32,7 +32,7 @@ public class RespuestaRepositoryAdapter implements RespuestaRepository {
             String evaluacionId, String subpruebaCodigo, String preguntaId, int ordenEntrada) {
         return respuestaRepo
                 .findByEvaluacionIdAndSubpruebaCodigoIgnoreCaseAndPreguntaIdAndOrdenEntrada(
-                        evaluacionId, subpruebaCodigo, preguntaId, ordenEntrada)
+                        evaluacionId, subpruebaCodigo, numero(preguntaId), ordenEntrada)
                 .map(this::toDomain);
     }
 
@@ -51,15 +51,15 @@ public class RespuestaRepositoryAdapter implements RespuestaRepository {
                             .findByEvaluacionIdAndSubpruebaCodigoIgnoreCaseAndPreguntaIdAndOrdenEntrada(
                                     respuesta.getEvaluacionId(),
                                     respuesta.getSubpruebaCodigo(),
-                                    respuesta.getPreguntaId(),
+                                    numero(respuesta.getPreguntaId()),
                                     respuesta.getOrdenEntrada());
             entity = existente.orElseGet(RespuestaEvaluacionEntity::new);
         }
 
         entity.setEvaluacionId(respuesta.getEvaluacionId());
         entity.setSubpruebaCodigo(respuesta.getSubpruebaCodigo());
-        entity.setPreguntaId(respuesta.getPreguntaId());
-        entity.setOpcionId(respuesta.getOpcionId());
+        entity.setPreguntaId(numero(respuesta.getPreguntaId()));
+        entity.setOpcionId(numero(respuesta.getOpcionId()));
         entity.setValorTexto(respuesta.getValorTexto());
         entity.setOrdenEntrada(respuesta.getOrdenEntrada());
         entity.setFechaRegistro(respuesta.getFechaRegistro());
@@ -74,13 +74,21 @@ public class RespuestaRepositoryAdapter implements RespuestaRepository {
                 evaluacionId, subpruebaCodigo);
     }
 
+    private Long numero(String value) {
+        return value == null ? null : Long.valueOf(value);
+    }
+
+    private String texto(Long value) {
+        return value == null ? null : value.toString();
+    }
+
     private RespuestaEvaluacion toDomain(RespuestaEvaluacionEntity entity) {
         return new RespuestaEvaluacion(
                 entity.getId(),
                 entity.getEvaluacionId(),
                 entity.getSubpruebaCodigo(),
-                entity.getPreguntaId(),
-                entity.getOpcionId(),
+                texto(entity.getPreguntaId()),
+                texto(entity.getOpcionId()),
                 entity.getValorTexto(),
                 entity.getOrdenEntrada(),
                 entity.getFechaRegistro());

@@ -15,10 +15,7 @@ public interface SpringDataRespuestaRepository
 
     Optional<RespuestaEvaluacionEntity>
             findByEvaluacionIdAndSubpruebaCodigoIgnoreCaseAndPreguntaIdAndOrdenEntrada(
-                    String evaluacionId,
-                    String subpruebaCodigo,
-                    String preguntaId,
-                    int ordenEntrada);
+                    String evaluacionId, String subpruebaCodigo, Long preguntaId, int ordenEntrada);
 
     long countByEvaluacionIdAndSubpruebaCodigoIgnoreCase(
             String evaluacionId, String subpruebaCodigo);
