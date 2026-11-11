@@ -3,7 +3,7 @@ package com.universidad.tests.mapper;
 import com.universidad.tests.domain.model.Evaluacion;
 import com.universidad.tests.domain.model.EvaluacionSubprueba;
 import com.universidad.tests.domain.model.Opcion;
-import com.universidad.tests.domain.model.Pregunta;
+import com.universidad.tests.domain.model.PreguntaAplicacion;
 import com.universidad.tests.domain.model.RespuestaEvaluacion;
 import com.universidad.tests.dto.EvaluacionResponseDto;
 import com.universidad.tests.dto.OpcionResponseDto;
@@ -59,7 +59,7 @@ public class MotorSubpruebasMapper {
 
     public PreguntasSubpruebaResponseDto toPreguntasSubpruebaDto(
             EvaluacionSubprueba subprueba,
-            List<Pregunta> preguntas,
+            List<PreguntaAplicacion> preguntas,
             List<RespuestaEvaluacion> respuestas,
             Instant ahora) {
 

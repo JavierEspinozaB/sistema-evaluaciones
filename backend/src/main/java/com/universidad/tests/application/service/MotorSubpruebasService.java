@@ -10,11 +10,11 @@ import com.universidad.tests.domain.model.EstadoSubprueba;
 import com.universidad.tests.domain.model.Evaluacion;
 import com.universidad.tests.domain.model.EvaluacionSubprueba;
 import com.universidad.tests.domain.model.Opcion;
-import com.universidad.tests.domain.model.Pregunta;
+import com.universidad.tests.domain.model.PreguntaAplicacion;
 import com.universidad.tests.domain.model.RespuestaEvaluacion;
-import com.universidad.tests.domain.model.TipoRespuesta;
+import com.universidad.tests.domain.model.TipoRespuestaAplicacion;
 import com.universidad.tests.domain.repository.EvaluacionRepository;
-import com.universidad.tests.domain.repository.PreguntaRepository;
+import com.universidad.tests.domain.repository.PreguntaRepositoryAplicacion;
 import com.universidad.tests.domain.repository.RespuestaRepository;
 import com.universidad.tests.dto.AvanceSubpruebaResponseDto;
 import com.universidad.tests.dto.EvaluacionResponseDto;
@@ -40,14 +40,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class MotorSubpruebasService {
 
     private final EvaluacionRepository evaluacionRepository;
-    private final PreguntaRepository preguntaRepository;
+    private final PreguntaRepositoryAplicacion preguntaRepository;
     private final RespuestaRepository respuestaRepository;
     private final MotorSubpruebasMapper mapper;
     private final Clock clock;
 
     public MotorSubpruebasService(
             EvaluacionRepository evaluacionRepository,
-            PreguntaRepository preguntaRepository,
+            PreguntaRepositoryAplicacion preguntaRepository,
             RespuestaRepository respuestaRepository,
             MotorSubpruebasMapper mapper,
             Clock clock) {
@@ -111,7 +111,7 @@ public class MotorSubpruebasService {
                     "La subprueba " + subpruebaCodigo + " no se encuentra activa.");
         }
 
-        List<Pregunta> preguntas = preguntaRepository.listarPorSubprueba(subpruebaCodigo);
+        List<PreguntaAplicacion> preguntas = preguntaRepository.listarPorSubprueba(subpruebaCodigo);
         List<RespuestaEvaluacion> respuestas =
                 respuestaRepository.listarPorEvaluacionYSubprueba(evaluacionId, subpruebaCodigo);
 
@@ -167,14 +167,14 @@ public class MotorSubpruebasService {
                         "preguntaId es obligatorio");
             }
 
-            Pregunta pregunta =
+            PreguntaAplicacion pregunta =
                     preguntaRepository
                             .buscarPorId(item.preguntaId())
                             .orElseThrow(
                                     () ->
                                             new RespuestaInvalidaException(
                                                     "preguntaId",
-                                                    "Pregunta inexistente: " + item.preguntaId()));
+                                                    "PreguntaAplicacion inexistente: " + item.preguntaId()));
 
             if (!pregunta.getSubpruebaCodigo().equalsIgnoreCase(subpruebaCodigo)) {
                 throw new RespuestaInvalidaException(
@@ -189,7 +189,7 @@ public class MotorSubpruebasService {
             String valorTextoAGuardar = item.valorTexto();
             String opcionEntrada = item.opcion() != null ? item.opcion() : item.opcionId();
 
-            if (pregunta.getTipoRespuesta() == TipoRespuesta.SELECCION) {
+            if (pregunta.getTipoRespuesta() == TipoRespuestaAplicacion.SELECCION) {
                 if (opcionEntrada == null || opcionEntrada.isBlank()) {
                     throw new RespuestaInvalidaException("opcion", "La opción es obligatoria.");
                 }

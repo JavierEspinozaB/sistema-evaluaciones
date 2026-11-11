@@ -3,24 +3,24 @@ package com.universidad.tests.domain.model;
 import java.util.Collections;
 import java.util.List;
 
-public class Pregunta {
+public class PreguntaAplicacion {
     private final String id;
     private final String subpruebaCodigo;
     private final int numero;
     private final String enunciado;
     private final String recursoMultimedia;
-    private final TipoRespuesta tipoRespuesta;
+    private final TipoRespuestaAplicacion tipoRespuesta;
     private final String claveCorrecta;
     private final int orden;
     private final List<Opcion> opciones;
 
-    public Pregunta(
+    public PreguntaAplicacion(
             String id,
             String subpruebaCodigo,
             int numero,
             String enunciado,
             String recursoMultimedia,
-            TipoRespuesta tipoRespuesta,
+            TipoRespuestaAplicacion tipoRespuesta,
             String claveCorrecta,
             int orden,
             List<Opcion> opciones) {
@@ -55,7 +55,7 @@ public class Pregunta {
         return recursoMultimedia;
     }
 
-    public TipoRespuesta getTipoRespuesta() {
+    public TipoRespuestaAplicacion getTipoRespuesta() {
         return tipoRespuesta;
     }
 

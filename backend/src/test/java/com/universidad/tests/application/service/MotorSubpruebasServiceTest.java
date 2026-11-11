@@ -18,11 +18,11 @@ import com.universidad.tests.domain.model.EstadoSubprueba;
 import com.universidad.tests.domain.model.Evaluacion;
 import com.universidad.tests.domain.model.EvaluacionSubprueba;
 import com.universidad.tests.domain.model.Opcion;
-import com.universidad.tests.domain.model.Pregunta;
+import com.universidad.tests.domain.model.PreguntaAplicacion;
 import com.universidad.tests.domain.model.RespuestaEvaluacion;
-import com.universidad.tests.domain.model.TipoRespuesta;
+import com.universidad.tests.domain.model.TipoRespuestaAplicacion;
 import com.universidad.tests.domain.repository.EvaluacionRepository;
-import com.universidad.tests.domain.repository.PreguntaRepository;
+import com.universidad.tests.domain.repository.PreguntaRepositoryAplicacion;
 import com.universidad.tests.domain.repository.RespuestaRepository;
 import com.universidad.tests.dto.AvanceSubpruebaResponseDto;
 import com.universidad.tests.dto.PreguntasSubpruebaResponseDto;
@@ -73,7 +73,7 @@ class MotorSubpruebasServiceTest {
     }
 
     private EvaluacionRepository evaluacionRepository;
-    private PreguntaRepository preguntaRepository;
+    private PreguntaRepositoryAplicacion preguntaRepository;
     private RespuestaRepository respuestaRepository;
     private MotorSubpruebasMapper mapper;
     private Clock clock;
@@ -83,7 +83,7 @@ class MotorSubpruebasServiceTest {
     @BeforeEach
     void setUp() {
         evaluacionRepository = mock(EvaluacionRepository.class);
-        preguntaRepository = mock(PreguntaRepository.class);
+        preguntaRepository = mock(PreguntaRepositoryAplicacion.class);
         respuestaRepository = mock(RespuestaRepository.class);
         mapper = new MotorSubpruebasMapper();
         baseTime = Instant.parse("2026-11-06T10:00:00Z");
@@ -172,14 +172,14 @@ class MotorSubpruebasServiceTest {
                 crearEvaluacionMock(EstadoSubprueba.ACTIVA, EstadoSubprueba.PENDIENTE);
         when(evaluacionRepository.buscarPorId("EV-01")).thenReturn(Optional.of(evaluacion));
 
-        Pregunta p1 =
-                new Pregunta(
+        PreguntaAplicacion p1 =
+                new PreguntaAplicacion(
                         "P-01",
                         "VOC1",
                         1,
-                        "Pregunta 1",
+                        "PreguntaAplicacion 1",
                         null,
-                        TipoRespuesta.SELECCION,
+                        TipoRespuestaAplicacion.SELECCION,
                         "OPT-A",
                         1,
                         List.of(
@@ -210,14 +210,14 @@ class MotorSubpruebasServiceTest {
                 crearEvaluacionMock(EstadoSubprueba.ACTIVA, EstadoSubprueba.PENDIENTE);
         when(evaluacionRepository.buscarPorId("EV-01")).thenReturn(Optional.of(evaluacion));
 
-        Pregunta p1 =
-                new Pregunta(
+        PreguntaAplicacion p1 =
+                new PreguntaAplicacion(
                         "P-01",
                         "VOC1",
                         1,
-                        "Pregunta 1",
+                        "PreguntaAplicacion 1",
                         null,
-                        TipoRespuesta.SELECCION,
+                        TipoRespuestaAplicacion.SELECCION,
                         "OPT-A",
                         1,
                         List.of(new Opcion("OPT-A", "A", "Opción A", 1)));
@@ -290,20 +290,20 @@ class MotorSubpruebasServiceTest {
 
     @Test
     @DisplayName(
-            "TC-GEN-03-018: Pregunta de otra subprueba es rechazada con RespuestaInvalidaException")
+            "TC-GEN-03-018: PreguntaAplicacion de otra subprueba es rechazada con RespuestaInvalidaException")
     void tc018_preguntaDeOtraSubpruebaRechazada() {
         Evaluacion evaluacion =
                 crearEvaluacionMock(EstadoSubprueba.ACTIVA, EstadoSubprueba.PENDIENTE);
         when(evaluacionRepository.buscarPorId("EV-01")).thenReturn(Optional.of(evaluacion));
 
-        Pregunta pVoc2 =
-                new Pregunta(
+        PreguntaAplicacion pVoc2 =
+                new PreguntaAplicacion(
                         "P-VOC2-01",
                         "VOC2",
                         1,
-                        "Pregunta VOC2",
+                        "PreguntaAplicacion VOC2",
                         null,
-                        TipoRespuesta.SELECCION,
+                        TipoRespuestaAplicacion.SELECCION,
                         "OPT-A",
                         1,
                         List.of());
@@ -354,14 +354,14 @@ class MotorSubpruebasServiceTest {
                 .isInstanceOf(SolicitudInvalidaException.class);
 
         // Opción ajena
-        Pregunta p1 =
-                new Pregunta(
+        PreguntaAplicacion p1 =
+                new PreguntaAplicacion(
                         "P-01",
                         "VOC1",
                         1,
-                        "Pregunta 1",
+                        "PreguntaAplicacion 1",
                         null,
-                        TipoRespuesta.SELECCION,
+                        TipoRespuestaAplicacion.SELECCION,
                         "OPT-A",
                         1,
                         List.of(new Opcion("OPT-A", "A", "Opción A", 1)));
@@ -433,14 +433,14 @@ class MotorSubpruebasServiceTest {
                 crearEvaluacionMock(EstadoSubprueba.ACTIVA, EstadoSubprueba.PENDIENTE);
         when(evaluacionRepository.buscarPorId("EV-01")).thenReturn(Optional.of(evaluacion));
 
-        Pregunta p1 =
-                new Pregunta(
+        PreguntaAplicacion p1 =
+                new PreguntaAplicacion(
                         "P-01",
                         "VOC1",
                         1,
-                        "Pregunta 1",
+                        "PreguntaAplicacion 1",
                         null,
-                        TipoRespuesta.SELECCION,
+                        TipoRespuestaAplicacion.SELECCION,
                         "OPT-A",
                         1,
                         List.of(new Opcion("OPT-A", "A", "Opción A", 1)));

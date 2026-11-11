@@ -1,6 +1,6 @@
 package com.universidad.tests.domain.model;
 
-public enum TipoRespuesta {
+public enum TipoRespuestaAplicacion {
     SELECCION,
     TEXTO
 }
