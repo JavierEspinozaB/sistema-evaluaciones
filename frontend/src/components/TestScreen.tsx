@@ -41,6 +41,7 @@ export type TestScreenProps = {
   onSelect?: (optionId: string) => void;
   onTextResponse?: (value: string) => void;
   onNext: () => void;
+  onRetrySave?: () => void;
 };
 
 const noop = () => undefined;
@@ -103,9 +104,10 @@ export function TestScreen({
   onSelect = noop,
   onTextResponse,
   onNext,
+  onRetrySave,
 }: TestScreenProps) {
   const headingId = useId();
-  const isActiveQuestion = phase === 'active';
+  const isActiveQuestion = phase === 'active' || phase === 'practice';
   const phaseCopy = phase === 'active' ? null : phaseDefaults[phase];
   const timerValue = formatRemainingTime(timeRemainingSeconds);
   const timerSeconds =
@@ -130,6 +132,9 @@ export function TestScreen({
       <div className="test-content">
         {isActiveQuestion ? (
           <>
+            {phase === 'practice' && (
+              <p className="phase-description">{phaseDescription ?? phaseCopy?.description}</p>
+            )}
             <p className="question-counter">
               {questionLabel ?? `Pregunta ${questionNumber} de ${totalQuestions}`}
             </p>
@@ -183,6 +188,11 @@ export function TestScreen({
 
       <footer className="test-footer">
         <SaveStatus state={saveState} />
+        {saveState === 'error' && onRetrySave && (
+          <button type="button" onClick={onRetrySave}>
+            Reintentar guardado
+          </button>
+        )}
         <div className="test-actions">
           {onPrevious && (
             <button className="secondary-action" type="button" onClick={onPrevious}>

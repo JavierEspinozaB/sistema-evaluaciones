@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router';
 import { TestScreen } from '../../../components/TestScreen';
 import type { SaveState } from '../../../components/SaveStatus';
+import { GuardadoRespuestas } from '../services/guardadoRespuestas';
 import { ApiError } from '../../../services/http';
 import {
   evaluacionService,
   type PreguntaInfo,
   type SubpruebaInfo,
 } from '../services/evaluacionService';
+import { recuperarPalabras } from '../services/fluidezVerbal';
 import { FluidezVerbal } from '../../bfa/components/FluidezVerbal';
 
 export interface SubpruebaRunnerProps {
@@ -37,20 +39,28 @@ export function SubpruebaRunner(props: SubpruebaRunnerProps) {
   const [practiceSelection, setPracticeSelection] = useState<string | null>(null);
   const [practiceText, setPracticeText] = useState<string>('');
 
-  // Concurrencia e idempotencia en guardado (BUG-02)
-  const peticionesEnCursoRef = useRef<Record<string, boolean>>({});
-  const ultimosValoresGuardadosRef = useRef<Record<string, string>>({});
+  const guardado = useRef<GuardadoRespuestas | null>(null);
+  useEffect(() => {
+    const cola = new GuardadoRespuestas(setSaveState, (err) => {
+      if (
+        err instanceof ApiError &&
+        ['TIEMPO_AGOTADO', 'SUBPRUEBA_NO_ACTIVA'].includes(err.error?.codigo ?? '')
+      ) {
+        setFase('closed');
+        setTiempoRestante(0);
+        cola.cancelar();
+      }
+    });
+    guardado.current = cola;
+    return () => cola.cancelar();
+  }, [evaluacionId, codigo]);
 
   const esFluidezVerbal = useMemo(() => {
     const cod = (subprueba?.codigo ?? codigo).toUpperCase();
     return cod === 'FV' || cod.includes('FLUIDEZ');
   }, [subprueba?.codigo, codigo]);
 
-  const letraFV = useMemo(() => {
-    const fuente = `${subprueba?.instrucciones ?? ''} ${preguntas[0]?.enunciado ?? ''}`;
-    const match = fuente.match(/(?:letra|con la)\s+["']?([A-Za-z])["']?/i);
-    return match ? match[1].toUpperCase() : 'M';
-  }, [subprueba?.instrucciones, preguntas]);
+  const letraFV = subprueba?.letraInicial ?? '';
 
   // Carga inicial
   useEffect(() => {
@@ -94,18 +104,19 @@ export function SubpruebaRunner(props: SubpruebaRunnerProps) {
           setFase('active');
 
           const iniciales: Record<string, string> = {};
-          const palabrasRecuperadas: string[] = [];
 
           res.preguntas.forEach((p) => {
             if (p.respuestaActual) {
               iniciales[p.id] = p.respuestaActual;
-              palabrasRecuperadas.push(p.respuestaActual);
             }
           });
           setRespuestas(iniciales);
-          if (palabrasRecuperadas.length > 0) {
-            setPalabrasFV(palabrasRecuperadas);
-          }
+          setPalabrasFV(recuperarPalabras(res.palabras ?? []));
+          setSubprueba({
+            ...sub,
+            letraInicial: res.letraInicial ?? sub.letraInicial,
+            maximoEntradas: res.maximoEntradas ?? sub.maximoEntradas,
+          });
         } else {
           // PENDIENTE: inicia en fase de instrucciones
           setFase('instructions');
@@ -156,6 +167,12 @@ export function SubpruebaRunner(props: SubpruebaRunnerProps) {
       setSubprueba(subIniciada);
 
       const res = await evaluacionService.consultarPreguntas(evaluacionId, codigo);
+      setPalabrasFV(recuperarPalabras(res.palabras ?? []));
+      setSubprueba({
+        ...subIniciada,
+        letraInicial: res.letraInicial ?? subIniciada.letraInicial,
+        maximoEntradas: res.maximoEntradas ?? subIniciada.maximoEntradas,
+      });
       setPreguntas(res.preguntas);
       setTiempoRestante(res.segundosRestantes ?? subIniciada.duracionSegundos);
       setFase('active');
@@ -195,48 +212,14 @@ export function SubpruebaRunner(props: SubpruebaRunnerProps) {
         return;
       }
 
-      const clave = `${preguntaId}_${ordenEntrada}`;
-      const valorAEnviar = `${opcion ?? ''}__${valorTexto ?? ''}`;
-
-      // Evitar envíos repetidos o en curso del mismo valor
-      if (ultimosValoresGuardadosRef.current[clave] === valorAEnviar) {
-        setSaveState('saved');
-        return;
-      }
-      if (peticionesEnCursoRef.current[clave]) {
-        return;
-      }
-
-      peticionesEnCursoRef.current[clave] = true;
-      setSaveState('saving');
-
-      try {
-        await evaluacionService.registrarRespuesta(evaluacionId, codigo, {
+      const clave = preguntaId + '_' + ordenEntrada;
+      guardado.current?.enviar(clave, JSON.stringify([opcion, valorTexto]), () =>
+        evaluacionService.registrarRespuesta(evaluacionId, codigo, {
           respuestas: [
-            {
-              preguntaId,
-              opcion: opcion ?? null,
-              valorTexto: valorTexto ?? null,
-              ordenEntrada,
-            },
+            { preguntaId, opcion: opcion ?? null, valorTexto: valorTexto ?? null, ordenEntrada },
           ],
-        });
-        ultimosValoresGuardadosRef.current[clave] = valorAEnviar;
-        setSaveState('saved');
-      } catch (err) {
-        setSaveState('error');
-        if (err instanceof ApiError) {
-          if (
-            err.error?.codigo === 'TIEMPO_AGOTADO' ||
-            err.error?.codigo === 'SUBPRUEBA_NO_ACTIVA'
-          ) {
-            setFase('closed');
-            setTiempoRestante(0);
-          }
-        }
-      } finally {
-        peticionesEnCursoRef.current[clave] = false;
-      }
+        }),
+      );
     },
     [evaluacionId, codigo, fase, tiempoRestante],
   );
@@ -266,19 +249,21 @@ export function SubpruebaRunner(props: SubpruebaRunnerProps) {
     [preguntas, indicePregunta],
   );
 
-  // Manejador específico para Fluidez Verbal (TC-002)
   const handlePalabrasChange = useCallback(
     (nuevasPalabras: string[]) => {
       setPalabrasFV(nuevasPalabras);
-      const preguntaId = preguntas[0]?.id || 'FV-01';
-
-      nuevasPalabras.forEach((palabra, idx) => {
-        if (palabra.trim() !== '') {
-          guardarRespuestaRef.current(preguntaId, undefined, palabra.trim(), idx + 1);
+      if (fase !== 'active' || (tiempoRestante ?? 0) <= 0) return;
+      nuevasPalabras.forEach((texto, indice) => {
+        if (texto !== (palabrasFV[indice] ?? '')) {
+          guardado.current?.enviar('FV_' + indice, texto, () =>
+            evaluacionService.registrarRespuesta(evaluacionId, codigo, {
+              palabras: [{ ordenEntrada: indice + 1, texto }],
+            }),
+          );
         }
       });
     },
-    [preguntas],
+    [palabrasFV, fase, tiempoRestante, evaluacionId, codigo],
   );
 
   const handleNext = useCallback(() => {
@@ -402,10 +387,18 @@ export function SubpruebaRunner(props: SubpruebaRunnerProps) {
       }
       responseArea={
         esFluidezVerbal && fase === 'active' ? (
-          <FluidezVerbal letra={letraFV} palabras={palabrasFV} onChange={handlePalabrasChange} />
+          <FluidezVerbal
+            letra={letraFV}
+            palabras={palabrasFV}
+            maxEntradas={subprueba?.maximoEntradas ?? 75}
+            onChange={handlePalabrasChange}
+          />
         ) : undefined
       }
       saveState={saveState}
+      onRetrySave={() => {
+        void guardado.current?.reintentar();
+      }}
       primaryActionLabel={
         fase === 'instructions'
           ? 'Ir a la práctica'

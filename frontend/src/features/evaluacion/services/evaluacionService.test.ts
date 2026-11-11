@@ -16,6 +16,25 @@ afterEach(() => {
 });
 
 describe('evaluacionService', () => {
+  it('FV envía palabras sin inventar preguntaId y recibe el avance del contrato', async () => {
+    mockFetchResponse(200, {
+      codigo: 'FV',
+      registradas: 2,
+      totalRespondidas: 2,
+      segundosRestantes: 280,
+    });
+    const palabras = [
+      { ordenEntrada: 1, texto: 'mesa' },
+      { ordenEntrada: 3, texto: ' montaña ' },
+    ];
+    const avance = await evaluacionService.registrarRespuesta('EV-01', 'FV', { palabras });
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/v1/evaluaciones/EV-01/subpruebas/FV/respuestas',
+      expect.objectContaining({ method: 'PUT', body: JSON.stringify({ palabras }) }),
+    );
+    expect(avance.codigo).toBe('FV');
+    expect(avance.registradas).toBe(2);
+  });
   it('consultarEvaluacion (E4) realiza GET a /api/v1/evaluaciones/{id}', async () => {
     const mockData = {
       id: 'EV-01',

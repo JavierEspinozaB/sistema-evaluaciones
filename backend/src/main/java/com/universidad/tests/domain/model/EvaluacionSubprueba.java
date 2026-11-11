@@ -17,6 +17,8 @@ public class EvaluacionSubprueba {
     private Instant fechaInicio;
     private Instant fechaFinLimite;
     private Instant fechaCierre;
+    private String letraInicial;
+    private int maximoEntradas = 75;
 
     public EvaluacionSubprueba(
             Long id,
@@ -66,7 +68,7 @@ public class EvaluacionSubprueba {
     }
 
     public boolean haExpirado(Instant ahora) {
-        return fechaFinLimite != null && ahora.isAfter(fechaFinLimite);
+        return fechaFinLimite != null && !ahora.isBefore(fechaFinLimite);
     }
 
     public Long calcularSegundosRestantes(Instant ahora) {
@@ -75,6 +77,26 @@ public class EvaluacionSubprueba {
         }
         long restantes = Duration.between(ahora, fechaFinLimite).getSeconds();
         return Math.max(0, restantes);
+    }
+
+    public boolean esFluidezVerbal() {
+        return "FV".equalsIgnoreCase(codigo);
+    }
+
+    public String getLetraInicial() {
+        return letraInicial;
+    }
+
+    public void setLetraInicial(String letraInicial) {
+        this.letraInicial = letraInicial;
+    }
+
+    public int getMaximoEntradas() {
+        return maximoEntradas;
+    }
+
+    public void setMaximoEntradas(int maximoEntradas) {
+        this.maximoEntradas = maximoEntradas;
     }
 
     public Long getId() {

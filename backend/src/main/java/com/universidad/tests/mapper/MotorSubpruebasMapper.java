@@ -24,7 +24,19 @@ public class MotorSubpruebasMapper {
                 evaluacion.getSubpruebas().stream().map(s -> toSubpruebaDto(s, ahora)).toList();
 
         return new EvaluacionResponseDto(
-                evaluacion.getId(), evaluacion.getSujetoId(), evaluacion.getEstado(), subpruebas);
+                evaluacion.getId(),
+                evaluacion.getSujetoId(),
+                evaluacion.getEstado(),
+                subpruebas,
+                evaluacion.getTestId(),
+                evaluacion.getPeriodoId(),
+                evaluacion.getVersionFormularioId(),
+                evaluacion.getFechaInicio(),
+                evaluacion.getFechaFin(),
+                subpruebas.stream()
+                        .filter(s -> "ACTIVA".equals(s.estado()))
+                        .findFirst()
+                        .orElse(null));
     }
 
     public SubpruebaResponseDto toSubpruebaDto(EvaluacionSubprueba subprueba, Instant ahora) {
@@ -40,7 +52,9 @@ public class MotorSubpruebasMapper {
                 subprueba.getFechaInicio(),
                 subprueba.getFechaFinLimite(),
                 subprueba.getInstrucciones(),
-                subprueba.isPermitirRetroceso());
+                subprueba.isPermitirRetroceso(),
+                subprueba.getLetraInicial(),
+                subprueba.esFluidezVerbal() ? subprueba.getMaximoEntradas() : null);
     }
 
     public PreguntasSubpruebaResponseDto toPreguntasSubpruebaDto(
@@ -49,6 +63,24 @@ public class MotorSubpruebasMapper {
             List<RespuestaEvaluacion> respuestas,
             Instant ahora) {
 
+        if (subprueba.esFluidezVerbal()) {
+            return new PreguntasSubpruebaResponseDto(
+                    subprueba.getCodigo(),
+                    subprueba.calcularSegundosRestantes(ahora),
+                    subprueba.isPermitirRetroceso(),
+                    List.of(),
+                    respuestas.stream()
+                            .sorted(
+                                    java.util.Comparator.comparingInt(
+                                            RespuestaEvaluacion::getOrdenEntrada))
+                            .map(
+                                    r ->
+                                            new com.universidad.tests.dto.PalabraFvDto(
+                                                    r.getOrdenEntrada(), r.getValorTexto()))
+                            .toList(),
+                    subprueba.getLetraInicial(),
+                    subprueba.getMaximoEntradas());
+        }
         Map<String, String> opcionIdALetra =
                 preguntas.stream()
                         .flatMap(p -> p.getOpciones().stream())

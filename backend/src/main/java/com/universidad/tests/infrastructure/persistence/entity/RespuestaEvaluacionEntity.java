@@ -22,7 +22,7 @@ public class RespuestaEvaluacionEntity {
     @Column(name = "subprueba_codigo", nullable = false, length = 50)
     private String subpruebaCodigo;
 
-    @Column(name = "pregunta_id", nullable = false, length = 50)
+    @Column(name = "pregunta_id", length = 50)
     private String preguntaId;
 
     @Column(name = "opcion_id", length = 50)

@@ -11,12 +11,20 @@ export interface SubpruebaInfo {
   finLimite: string | null;
   instrucciones: string | null;
   permitirRetroceso: boolean;
+  letraInicial?: string | null;
+  maximoEntradas?: number | null;
 }
 
 export interface EvaluacionInfo {
   id: string;
   sujetoId: string;
   estado: string;
+  testId?: string | null;
+  periodoId?: string | null;
+  versionFormularioId?: string | null;
+  fechaInicio?: string | null;
+  fechaFin?: string | null;
+  subpruebaActiva?: SubpruebaInfo | null;
   subpruebas: SubpruebaInfo[];
 }
 
@@ -42,6 +50,14 @@ export interface PreguntasSubpruebaResponse {
   segundosRestantes: number | null;
   permitirRetroceso: boolean;
   preguntas: PreguntaInfo[];
+  palabras?: PalabraFV[];
+  letraInicial?: string | null;
+  maximoEntradas?: number | null;
+}
+
+export interface PalabraFV {
+  ordenEntrada: number;
+  texto: string;
 }
 
 export interface ItemRespuesta {
@@ -53,6 +69,7 @@ export interface ItemRespuesta {
 }
 
 export interface RegistrarRespuestaRequest {
+  palabras?: PalabraFV[];
   respuestas?: ItemRespuesta[];
   preguntaId?: string;
   opcion?: string | null;
@@ -62,6 +79,9 @@ export interface RegistrarRespuestaRequest {
 }
 
 export interface AvanceSubpruebaResponse {
+  codigo: string;
+  registradas: number;
+  segundosRestantes: number;
   evaluacionId: string;
   subpruebaCodigo: string;
   preguntaId: string;
@@ -97,7 +117,7 @@ export const evaluacionService = {
     body: RegistrarRespuestaRequest,
   ): Promise<AvanceSubpruebaResponse> {
     const payload =
-      body.respuestas != null
+      body.palabras != null || body.respuestas != null
         ? body
         : {
             respuestas: [

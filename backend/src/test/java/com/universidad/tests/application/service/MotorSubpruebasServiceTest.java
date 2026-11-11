@@ -41,6 +41,37 @@ import org.junit.jupiter.api.Test;
 
 class MotorSubpruebasServiceTest {
 
+    @Test
+    void respuestaQueEsperaBloqueoHastaFinLimiteSeRechaza() {
+        Evaluacion evaluacion =
+                crearEvaluacionMock(EstadoSubprueba.ACTIVA, EstadoSubprueba.PENDIENTE);
+        var instante = new java.util.concurrent.atomic.AtomicReference<>(baseTime);
+        Clock reloj = mock(Clock.class);
+        when(reloj.instant()).thenAnswer(invocacion -> instante.get());
+        when(evaluacionRepository.buscarPorId("EV-01"))
+                .thenAnswer(
+                        invocacion -> {
+                            // Simula que el bloqueo se libera justo al alcanzar el límite oficial.
+                            instante.set(baseTime.plusSeconds(300));
+                            return Optional.of(evaluacion);
+                        });
+        var motor =
+                new MotorSubpruebasService(
+                        evaluacionRepository,
+                        preguntaRepository,
+                        respuestaRepository,
+                        mapper,
+                        reloj);
+        assertThatThrownBy(
+                        () ->
+                                motor.registrarRespuesta(
+                                        "EV-01",
+                                        "VOC1",
+                                        new RegistrarRespuestaRequestDto("P-01", "A", null, 1)))
+                .isInstanceOf(TiempoAgotadoException.class);
+        org.mockito.Mockito.verifyNoInteractions(respuestaRepository);
+    }
+
     private EvaluacionRepository evaluacionRepository;
     private PreguntaRepository preguntaRepository;
     private RespuestaRepository respuestaRepository;

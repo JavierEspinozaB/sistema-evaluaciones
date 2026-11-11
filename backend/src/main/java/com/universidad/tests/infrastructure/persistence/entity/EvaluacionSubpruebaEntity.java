@@ -53,6 +53,24 @@ public class EvaluacionSubpruebaEntity {
     @Column(name = "fecha_cierre")
     private Instant fechaCierre;
 
+    @Column(name = "letra_inicial", length = 1)
+    private String letraInicial;
+
+    @Column(name = "maximo_entradas", nullable = false)
+    private int maximoEntradas = 75;
+
+    public String getLetraInicial() {
+        return letraInicial;
+    }
+
+    public void setLetraInicial(String letraInicial) {
+        this.letraInicial = letraInicial;
+    }
+
+    public int getMaximoEntradas() {
+        return maximoEntradas;
+    }
+
     public EvaluacionSubpruebaEntity() {}
 
     public Long getId() {

@@ -59,51 +59,34 @@ public class MotorSubpruebasService {
     }
 
     public EvaluacionResponseDto consultarEvaluacion(String evaluacionId) {
-        Instant ahora = clock.instant();
         Evaluacion evaluacion = obtenerEvaluacionOError(evaluacionId);
-
-        for (EvaluacionSubprueba sub : evaluacion.getSubpruebas()) {
-            if (sub.getEstado() == EstadoSubprueba.ACTIVA && sub.haExpirado(ahora)) {
-                sub.cerrar(ahora);
-                evaluacionRepository.guardarSubprueba(sub);
-            }
-        }
-
+        Instant ahora = clock.instant();
+        cerrarVencidas(evaluacion, ahora);
         return mapper.toEvaluacionDto(evaluacion, ahora);
     }
 
-    public SubpruebaResponseDto iniciarSubprueba(String evaluacionId, String subpruebaCodigo) {
-        Instant ahora = clock.instant();
-        Evaluacion evaluacion = obtenerEvaluacionOError(evaluacionId);
-
-        // 1. Auto-cerrar cualquier subprueba ACTIVA que haya expirado
+    private void cerrarVencidas(Evaluacion evaluacion, Instant ahora) {
         for (EvaluacionSubprueba sub : evaluacion.getSubpruebas()) {
             if (sub.getEstado() == EstadoSubprueba.ACTIVA && sub.haExpirado(ahora)) {
                 sub.cerrar(ahora);
                 evaluacionRepository.guardarSubprueba(sub);
             }
         }
+    }
 
+    public SubpruebaResponseDto iniciarSubprueba(String evaluacionId, String subpruebaCodigo) {
+        Evaluacion evaluacion = obtenerEvaluacionOError(evaluacionId);
+        Instant ahora = clock.instant();
+        cerrarVencidas(evaluacion, ahora);
         EvaluacionSubprueba subprueba = evaluacion.buscarSubprueba(subpruebaCodigo);
-
         if (subprueba.getEstado() == EstadoSubprueba.CERRADA) {
-            throw new SubpruebaCerradaException(
-                    "La subprueba " + subpruebaCodigo + " ya ha sido cerrada.");
+            throw new SubpruebaCerradaException("La subprueba ya está cerrada.");
         }
-
-        if (subprueba.getEstado() == EstadoSubprueba.ACTIVA) {
-            if (subprueba.haExpirado(ahora)) {
-                subprueba.cerrar(ahora);
-                evaluacionRepository.guardarSubprueba(subprueba);
-                throw new SubpruebaCerradaException(
-                        "La subprueba " + subpruebaCodigo + " ya ha finalizado su tiempo.");
-            }
-            return mapper.toSubpruebaDto(subprueba, ahora);
-        }
-
-        // 2. Validar orden estricto (ahora que las expiradas ya fueron cerradas)
         evaluacion.validarOrdenSubprueba(subpruebaCodigo);
-
+        if (subprueba.esFluidezVerbal()
+                && (subprueba.getLetraInicial() == null || subprueba.getLetraInicial().isBlank())) {
+            throw new com.universidad.tests.domain.exception.LetraNoConfiguradaException();
+        }
         subprueba.iniciar(ahora);
         evaluacionRepository.guardarSubprueba(subprueba);
 
@@ -112,8 +95,8 @@ public class MotorSubpruebasService {
 
     public PreguntasSubpruebaResponseDto consultarPreguntas(
             String evaluacionId, String subpruebaCodigo) {
-        Instant ahora = clock.instant();
         Evaluacion evaluacion = obtenerEvaluacionOError(evaluacionId);
+        Instant ahora = clock.instant();
         EvaluacionSubprueba subprueba = evaluacion.buscarSubprueba(subpruebaCodigo);
 
         if (subprueba.getEstado() == EstadoSubprueba.ACTIVA && subprueba.haExpirado(ahora)) {
@@ -137,9 +120,8 @@ public class MotorSubpruebasService {
 
     public AvanceSubpruebaResponseDto registrarRespuesta(
             String evaluacionId, String subpruebaCodigo, RegistrarRespuestaRequestDto request) {
-        Instant ahora = clock.instant();
-
         Evaluacion evaluacion = obtenerEvaluacionOError(evaluacionId);
+        Instant ahora = clock.instant();
         EvaluacionSubprueba subprueba = evaluacion.buscarSubprueba(subpruebaCodigo);
 
         if (subprueba.getEstado() == EstadoSubprueba.CERRADA) {
@@ -159,6 +141,15 @@ public class MotorSubpruebasService {
                     "El tiempo límite para la subprueba " + subpruebaCodigo + " ha finalizado.");
         }
 
+        if (subprueba.esFluidezVerbal()) {
+            return registrarPalabras(evaluacionId, subprueba, request, ahora);
+        }
+        if (request != null && request.palabras() != null) {
+            throw new SolicitudInvalidaException(
+                    "Esta subprueba requiere respuestas.",
+                    "palabras",
+                    "Solo se admiten palabras para FV.");
+        }
         List<ItemRespuestaDto> items =
                 request != null ? request.obtenerListaRespuestas() : List.of();
         if (items.isEmpty()) {
@@ -169,7 +160,7 @@ public class MotorSubpruebasService {
         }
 
         for (ItemRespuestaDto item : items) {
-            if (item.preguntaId() == null || item.preguntaId().isBlank()) {
+            if (item == null || item.preguntaId() == null || item.preguntaId().isBlank()) {
                 throw new SolicitudInvalidaException(
                         "El identificador de pregunta es obligatorio.",
                         "preguntaId",
@@ -253,7 +244,72 @@ public class MotorSubpruebasService {
                 items.get(0).preguntaId(),
                 totalRespondidas,
                 totalPreguntas,
-                true);
+                true,
+                subprueba.getCodigo(),
+                items.size(),
+                subprueba.calcularSegundosRestantes(ahora));
+    }
+
+    private AvanceSubpruebaResponseDto registrarPalabras(
+            String evaluacionId,
+            EvaluacionSubprueba subprueba,
+            RegistrarRespuestaRequestDto request,
+            Instant ahora) {
+        String codigo = subprueba.getCodigo();
+        if (request == null
+                || request.palabras() == null
+                || request.palabras().isEmpty()
+                || !request.obtenerListaRespuestas().isEmpty()) {
+            throw new SolicitudInvalidaException(
+                    "FV requiere una lista de palabras.",
+                    "palabras",
+                    "Envíe palabras con ordenEntrada y texto.");
+        }
+        java.util.Set<Integer> ordenes = new java.util.HashSet<>();
+        for (com.universidad.tests.dto.PalabraFvDto palabra : request.palabras()) {
+            if (palabra == null
+                    || palabra.ordenEntrada() == null
+                    || palabra.ordenEntrada() < 1
+                    || palabra.ordenEntrada() > subprueba.getMaximoEntradas()
+                    || !ordenes.add(palabra.ordenEntrada())) {
+                throw new SolicitudInvalidaException(
+                        "Orden de entrada inválido.",
+                        "ordenEntrada",
+                        "El orden debe ser único y estar entre 1 y "
+                                + subprueba.getMaximoEntradas());
+            }
+            if (palabra.texto() == null || palabra.texto().isBlank()) {
+                throw new SolicitudInvalidaException(
+                        "Texto de palabra vacío.", "texto", "El texto es obligatorio.");
+            }
+        }
+        for (com.universidad.tests.dto.PalabraFvDto palabra : request.palabras()) {
+            Long id =
+                    respuestaRepository
+                            .buscarRespuesta(evaluacionId, codigo, null, palabra.ordenEntrada())
+                            .map(RespuestaEvaluacion::getId)
+                            .orElse(null);
+            respuestaRepository.guardar(
+                    new RespuestaEvaluacion(
+                            id,
+                            evaluacionId,
+                            codigo,
+                            null,
+                            null,
+                            palabra.texto(),
+                            palabra.ordenEntrada(),
+                            ahora));
+        }
+        return new AvanceSubpruebaResponseDto(
+                evaluacionId,
+                codigo,
+                null,
+                respuestaRepository.contarPorEvaluacionYSubprueba(evaluacionId, codigo),
+                0,
+                true,
+                codigo,
+                request.palabras().size(),
+                subprueba.calcularSegundosRestantes(ahora));
     }
 
     private Evaluacion obtenerEvaluacionOError(String evaluacionId) {

@@ -35,6 +35,61 @@ public class EvaluacionEntity {
     @OrderBy("orden ASC")
     private List<EvaluacionSubpruebaEntity> subpruebas = new ArrayList<>();
 
+    @Column(name = "test_id")
+    private String testId;
+
+    @Column(name = "periodo_id")
+    private String periodoId;
+
+    @Column(name = "version_formulario_id")
+    private String versionFormularioId;
+
+    @Column(name = "fecha_inicio")
+    private Instant fechaInicio;
+
+    @Column(name = "fecha_fin")
+    private Instant fechaFin;
+
+    public String getTestId() {
+        return testId;
+    }
+
+    public void setTestId(String value) {
+        testId = value;
+    }
+
+    public String getPeriodoId() {
+        return periodoId;
+    }
+
+    public void setPeriodoId(String value) {
+        periodoId = value;
+    }
+
+    public String getVersionFormularioId() {
+        return versionFormularioId;
+    }
+
+    public void setVersionFormularioId(String value) {
+        versionFormularioId = value;
+    }
+
+    public Instant getFechaInicio() {
+        return fechaInicio;
+    }
+
+    public void setFechaInicio(Instant value) {
+        fechaInicio = value;
+    }
+
+    public Instant getFechaFin() {
+        return fechaFin;
+    }
+
+    public void setFechaFin(Instant value) {
+        fechaFin = value;
+    }
+
     public EvaluacionEntity() {}
 
     public EvaluacionEntity(

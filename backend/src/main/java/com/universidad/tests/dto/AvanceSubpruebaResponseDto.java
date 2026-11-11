@@ -6,4 +6,26 @@ public record AvanceSubpruebaResponseDto(
         String preguntaId,
         long totalRespondidas,
         int totalPreguntas,
-        boolean guardado) {}
+        boolean guardado,
+        String codigo,
+        int registradas,
+        Long segundosRestantes) {
+    public AvanceSubpruebaResponseDto(
+            String evaluacionId,
+            String subpruebaCodigo,
+            String preguntaId,
+            long totalRespondidas,
+            int totalPreguntas,
+            boolean guardado) {
+        this(
+                evaluacionId,
+                subpruebaCodigo,
+                preguntaId,
+                totalRespondidas,
+                totalPreguntas,
+                guardado,
+                subpruebaCodigo,
+                1,
+                null);
+    }
+}

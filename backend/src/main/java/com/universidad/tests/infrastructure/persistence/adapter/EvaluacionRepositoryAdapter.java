@@ -28,7 +28,7 @@ public class EvaluacionRepositoryAdapter implements EvaluacionRepository {
 
     @Override
     public Optional<Evaluacion> buscarPorId(String id) {
-        return evaluacionRepo.findById(id).map(this::toDomain);
+        return evaluacionRepo.buscarBloqueada(id).map(this::toDomain);
     }
 
     @Override
@@ -47,6 +47,11 @@ public class EvaluacionRepositoryAdapter implements EvaluacionRepository {
             entity.setEstado(evaluacion.getEstado());
             entity.setActualizadoEn(ahora);
         }
+        entity.setTestId(evaluacion.getTestId());
+        entity.setPeriodoId(evaluacion.getPeriodoId());
+        entity.setVersionFormularioId(evaluacion.getVersionFormularioId());
+        entity.setFechaInicio(evaluacion.getFechaInicio());
+        entity.setFechaFin(evaluacion.getFechaFin());
         EvaluacionEntity guardada = evaluacionRepo.save(entity);
         return toDomain(guardada);
     }
@@ -67,6 +72,7 @@ public class EvaluacionRepositoryAdapter implements EvaluacionRepository {
                 .ifPresent(
                         entity -> {
                             entity.setEstado(subprueba.getEstado().name());
+                            entity.setLetraInicial(subprueba.getLetraInicial());
                             entity.setFechaInicio(subprueba.getFechaInicio());
                             entity.setFechaFinLimite(subprueba.getFechaFinLimite());
                             entity.setFechaCierre(subprueba.getFechaCierre());
@@ -78,22 +84,34 @@ public class EvaluacionRepositoryAdapter implements EvaluacionRepository {
         List<EvaluacionSubprueba> subpruebas =
                 entity.getSubpruebas().stream().map(this::toDomainSubprueba).toList();
 
-        return new Evaluacion(entity.getId(), entity.getSujetoId(), entity.getEstado(), subpruebas);
+        Evaluacion evaluacion =
+                new Evaluacion(
+                        entity.getId(), entity.getSujetoId(), entity.getEstado(), subpruebas);
+        evaluacion.setTestId(entity.getTestId());
+        evaluacion.setPeriodoId(entity.getPeriodoId());
+        evaluacion.setVersionFormularioId(entity.getVersionFormularioId());
+        evaluacion.setFechaInicio(entity.getFechaInicio());
+        evaluacion.setFechaFin(entity.getFechaFin());
+        return evaluacion;
     }
 
     private EvaluacionSubprueba toDomainSubprueba(EvaluacionSubpruebaEntity entity) {
-        return new EvaluacionSubprueba(
-                entity.getId(),
-                entity.getEvaluacion().getId(),
-                entity.getCodigo(),
-                entity.getNombre(),
-                entity.getOrden(),
-                entity.getDuracionSegundos(),
-                EstadoSubprueba.valueOf(entity.getEstado()),
-                entity.getInstrucciones(),
-                entity.isPermitirRetroceso(),
-                entity.getFechaInicio(),
-                entity.getFechaFinLimite(),
-                entity.getFechaCierre());
+        EvaluacionSubprueba subprueba =
+                new EvaluacionSubprueba(
+                        entity.getId(),
+                        entity.getEvaluacion().getId(),
+                        entity.getCodigo(),
+                        entity.getNombre(),
+                        entity.getOrden(),
+                        entity.getDuracionSegundos(),
+                        EstadoSubprueba.valueOf(entity.getEstado()),
+                        entity.getInstrucciones(),
+                        entity.isPermitirRetroceso(),
+                        entity.getFechaInicio(),
+                        entity.getFechaFinLimite(),
+                        entity.getFechaCierre());
+        subprueba.setLetraInicial(entity.getLetraInicial());
+        subprueba.setMaximoEntradas(entity.getMaximoEntradas());
+        return subprueba;
     }
 }

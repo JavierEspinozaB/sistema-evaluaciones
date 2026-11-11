@@ -22,6 +22,21 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(com.universidad.tests.domain.exception.LetraNoConfiguradaException.class)
+    public ResponseEntity<ErrorResponseDto> handleLetraNoConfigurada(
+            com.universidad.tests.domain.exception.LetraNoConfiguradaException ex,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(
+                        new ErrorResponseDto(
+                                Instant.now(),
+                                409,
+                                "LETRA_NO_CONFIGURADA",
+                                ex.getMessage(),
+                                request.getRequestURI(),
+                                List.of(new DetalleErrorDto("letraInicial", ex.getMessage()))));
+    }
+
     @ExceptionHandler(RecursoNoEncontradoException.class)
     public ResponseEntity<ErrorResponseDto> handleRecursoNoEncontrado(
             RecursoNoEncontradoException ex, HttpServletRequest request) {

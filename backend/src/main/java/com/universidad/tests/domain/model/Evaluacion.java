@@ -19,6 +19,52 @@ public class Evaluacion {
         this.subpruebas = subpruebas == null ? Collections.emptyList() : List.copyOf(subpruebas);
     }
 
+    private String testId;
+    private String periodoId;
+    private String versionFormularioId;
+    private java.time.Instant fechaInicio;
+    private java.time.Instant fechaFin;
+
+    public String getTestId() {
+        return testId;
+    }
+
+    public void setTestId(String value) {
+        testId = value;
+    }
+
+    public String getPeriodoId() {
+        return periodoId;
+    }
+
+    public void setPeriodoId(String value) {
+        periodoId = value;
+    }
+
+    public String getVersionFormularioId() {
+        return versionFormularioId;
+    }
+
+    public void setVersionFormularioId(String value) {
+        versionFormularioId = value;
+    }
+
+    public java.time.Instant getFechaInicio() {
+        return fechaInicio;
+    }
+
+    public void setFechaInicio(java.time.Instant value) {
+        fechaInicio = value;
+    }
+
+    public java.time.Instant getFechaFin() {
+        return fechaFin;
+    }
+
+    public void setFechaFin(java.time.Instant value) {
+        fechaFin = value;
+    }
+
     public String getId() {
         return id;
     }
