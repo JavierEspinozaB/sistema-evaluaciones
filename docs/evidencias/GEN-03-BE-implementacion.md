@@ -94,4 +94,4 @@ Cobertura nueva y ampliada:
 
 La implementación y las pruebas locales están preparadas; esta evidencia **no equivale a `testing-ok` ni a cierre de la tarea integrada**. Quedan la fusión previa de GEN-07, la conexión real de GEN-02 y GEN-06, la estrategia de cálculo correspondiente y la revisión de Integración/Testing sobre el SHA que se publique. Los casos de autorización con roles y alcance reales requieren GEN-06. Las consultas documentales C-6/C-7 siguen perteneciendo a Documentación y Testing.
 
-La rama y los cambios nuevos no se publicaron en GitHub como parte de esta entrega.
+La entrega se publica desde `feature/javier-espinoza-GEN-03-BE` mediante un PR independiente titulado `[GEN-03-BE] Implementar aplicación de subpruebas y respuestas`. Su publicación no modifica la conformidad de Testing ni resuelve las dependencias indicadas.
