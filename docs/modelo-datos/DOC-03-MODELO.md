@@ -13,6 +13,27 @@ El equipo documentador debe acordar entidades, atributos, relaciones, restriccio
 | 2026-11-17 | GEN-01-BE | `subprueba.factor` (`VARCHAR(80)`, nulo mientras no se cargue): código del factor al que aporta la subprueba según el Documento BFA §5.3. Varias subpruebas pueden compartir factor (S1 y S1b → S1; N1-A y N1-B → N1). Migración `V202611170600__comun_agregar_factor_subprueba.sql`. |
 | 2026-11-17 | GEN-01-BE | E2 no guarda `opciones` ni `numeroPreguntas`: los calcula desde `pregunta` y `opcion_respuesta` de la configuración publicada. |
 
+## Incógnitas y decisiones
+
+**Tarea:** DOC-44 · **Responsable del aporte:** Javier Josué Espinoza Blandón  
+**Estado:** borrador de trazabilidad. Pendiente de contrastar con el registro consolidado de DOC-42.
+
+### Evidencias previas a la consulta
+
+DOC-42 debe identificar las filas marcadas «Preguntar al docente». Davide transmite la lista numerada por el canal del curso. El envío y cada respuesta se acreditan con enlace, fecha y contenido pertinente. La fuente revisada es DOC-31 y ClickUp. La lista oficial, el envío y las respuestas siguen pendientes de verificación.
+
+| Referencia | Asunto | Estado comprobado | Evidencia y siguiente actuación |
+|---|---|---|---|
+| DOC-42 | Consolidación de incógnitas de los cuatro temas | Pendiente de consolidación | Confirmar las filas marcadas para consulta y copiar sus identificadores originales. |
+| DOC-32-BFAW / DOC-32-OTR | Reglas de ítems y formularios que queden sin resolver tras el contraste | Pendiente de revisión técnica | Contrastar los aportes y elevar exclusivamente las reglas funcionales que DOC-42 marque para consulta. |
+| DOC-31 / GEN-37-BE | Nombres de PK, FK y estructura de evaluación, subprueba y respuesta | Pendiente de confirmación técnica | Validar el SQL y el diff con Desarrollo. Solo elevar al docente una decisión funcional pendiente. |
+| DOC-44 | Evidencia de envío y respuesta por cada pregunta oficial | Pendiente de evidencia | Registrar un estado por fila e incorporar únicamente las decisiones con fuente. |
+
+
+### Registro y cierre
+
+Por cada fila oficial se conserva el ID original, la pregunta, su responsable, el estado, la fecha, la fuente de evidencia y el cambio aplicable. Si consta el envío y a las 10:00 del 25 de noviembre falta respuesta, corresponde «Preguntar al docente – enviada 25-nov». Cuando haya respuesta verificable, se actualizan el registro y el documento del tema. Si afecta al diagrama, se avisa a Fernando Reyes y se traza el cambio a DOC-45. Una decisión posterior debe conservar su evidencia y la fecha real de incorporación.
+
 ## Núcleo y glosario
 
 Tarea DOC-31. Congela las tablas comunes y los nombres canónicos que usan todos los temas de BD. Cada tema (claves, baremos, resultados por test, etc.) cuelga de estas tablas sin renombrarlas.
