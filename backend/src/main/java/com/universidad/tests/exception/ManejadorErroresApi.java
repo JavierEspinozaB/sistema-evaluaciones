@@ -1,5 +1,6 @@
 package com.universidad.tests.exception;
 
+import com.universidad.tests.domain.exception.EvaluacionNoEncontradaException;
 import com.universidad.tests.domain.exception.TestNoEncontradoException;
 import com.universidad.tests.dto.response.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,6 +18,13 @@ public class ManejadorErroresApi {
             TestNoEncontradoException ex, HttpServletRequest request) {
 
         return error(HttpStatus.NOT_FOUND, "TEST_NO_ENCONTRADO", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(EvaluacionNoEncontradaException.class)
+    public ResponseEntity<ErrorResponse> evaluacionNoEncontrada(
+            EvaluacionNoEncontradaException ex, HttpServletRequest request) {
+
+        return error(HttpStatus.NOT_FOUND, "EVALUACION_NO_ENCONTRADA", ex.getMessage(), request);
     }
 
     private ResponseEntity<ErrorResponse> error(

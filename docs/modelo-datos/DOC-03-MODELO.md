@@ -1,10 +1,17 @@
 # DOC-03 Modelo de datos
 
-**Estado: pendiente de definición y aprobación.** No existen tablas del dominio en este esqueleto.
+**Estado: Propuesta del sprint 03.**
 
-Posibles conceptos por investigar en el análisis funcional: evaluados, períodos, preguntas, opciones, intentos, respuestas, resultados e informes.
+## Diagrama y temas del modelo
 
-El equipo documentador debe acordar entidades, atributos, relaciones, restricciones, trazabilidad y protección de datos **antes** de generar SQL o clases JPA.
+El diagrama reúne el núcleo común aprobado en DOC-40, las tablas de claves y baremos de BFA y las propuestas de calificación de DOC-34-BFAW:
+[editable en Draw.io](../diagramas/modelo-er.drawio) · [vista PNG](../diagramas/modelo-er.png).
+DOC-34-OTR reutiliza las tablas comunes de calificación para Thurstone y Allport. Orientación Vocacional no tiene calificación automática definida. La propuesta de baremos genéricos (OTR-05) y la diferencia de auditoría entre DOC-31 y DOC-35-COM quedan pendientes de decisión.
+
+- [Ítems y formularios](items-formularios.md)
+- [Aplicación y respuestas (DOC-33, seguimiento en ClickUp)](https://app.clickup.com/t/1k5fzqb0ft6): el documento del tema aún no está en el repositorio.
+- [Calificación, escalas y baremos](calificacion-baremos.md)
+- [Identidad, periodos y auditoría](identidad-auditoria.md)
 
 ## Decisiones registradas en el repositorio
 
@@ -15,24 +22,74 @@ El equipo documentador debe acordar entidades, atributos, relaciones, restriccio
 
 ## Incógnitas y decisiones
 
-**Tarea:** DOC-44 · **Responsable del aporte:** Javier Josué Espinoza Blandón  
-**Estado:** borrador de trazabilidad. Pendiente de contrastar con el registro consolidado de DOC-42.
+Tarea DOC-42. Reúne las decisiones del modelo que tomaron los cuatro temas (DOC-32 a DOC-35) y las incógnitas que siguen abiertas. Cada incógnita queda resuelta con su fuente o marcada «Preguntar al docente». No incluye ítems, claves ni valores de baremos reales.
 
-### Evidencias previas a la consulta
+### Decisiones del modelo
 
-DOC-42 debe identificar las filas marcadas «Preguntar al docente». Davide transmite la lista numerada por el canal del curso. El envío y cada respuesta se acreditan con enlace, fecha y contenido pertinente. La fuente revisada es DOC-31 y ClickUp. La lista oficial, el envío y las respuestas siguen pendientes de verificación.
+| ID | Decisión | Fuente | Tema |
+| --- | --- | --- | --- |
+| D-01 | Los nombres que ya existen en `main` o en los PR #89, #41, #91, #50 y #69 no se renombran; los temas cuelgan sus tablas del núcleo. | Núcleo y glosario (DOC-31) | Todos |
+| D-02 | Las claves y baremos de BFA conservan `version_clave_bfa`, `entrada_clave_bfa`, `baremo_bfa` y `rango_baremo_bfa`. | PR #50 y #69; DOC-31 | DOC-34 |
+| D-03 | Weill Forma A es una sola subprueba de 60 preguntas; la lámina se deriva de la posición (12 por lámina). No se crean cinco subpruebas. | Nota Weill (DOC-36) §1 | DOC-32 / DOC-34 |
+| D-04 | Weill usa opción única 1–8 por pregunta; se puede finalizar con preguntas omitidas y valen 0. | Nota Weill §2 y §5 | DOC-33 / DOC-34 |
+| D-05 | Weill no tiene límite de tiempo por defecto: `configuracion_subprueba.tiempo_limite_segundos` queda nulo. | Docente 21/11 (H-01); Nota Weill §3 | DOC-32 |
+| D-06 | Un dato normativo que no se puede calcular queda nulo con estado y motivo; nunca se rellena con 0. | Documento BFA ENT-BFA-10; Nota Weill §7 | DOC-34 |
+| D-07 | `sujeto`, `periodo` y `cuenta` usan los nombres físicos del núcleo (`codigo_institucional`, `fecha_nacimiento`, `fecha_inicio`, `fecha_fin`, `estado` ACTIVA/INHABILITADA…), no los atributos lógicos en camelCase de las fichas ENT-COM. | Núcleo y glosario (DOC-31) | DOC-35 |
+| D-08 | La duda I-01 de DOC-32 (estructura de Weill) queda resuelta: la Nota Weill fue aceptada el 24/11. Weill puede seguir el mismo patrón de clave: una entrada por pregunta (60 entradas, la secuencia de 12 repetida en las 5 láminas). | Nota Weill (DOC-36) §1, §2 y §5 | DOC-32 |
 
-| Referencia | Asunto | Estado comprobado | Evidencia y siguiente actuación |
-|---|---|---|---|
-| DOC-42 | Consolidación de incógnitas de los cuatro temas | Pendiente de consolidación | Confirmar las filas marcadas para consulta y copiar sus identificadores originales. |
-| DOC-32-BFAW / DOC-32-OTR | Reglas de ítems y formularios que queden sin resolver tras el contraste | Pendiente de revisión técnica | Contrastar los aportes y elevar exclusivamente las reglas funcionales que DOC-42 marque para consulta. |
-| DOC-31 / GEN-37-BE | Nombres de PK, FK y estructura de evaluación, subprueba y respuesta | Pendiente de confirmación técnica | Validar el SQL y el diff con Desarrollo. Solo elevar al docente una decisión funcional pendiente. |
-| DOC-44 | Evidencia de envío y respuesta por cada pregunta oficial | Pendiente de evidencia | Registrar un estado por fila e incorporar únicamente las decisiones con fuente. |
+### Incógnitas
 
+| ID | Incógnita e impacto en el modelo | Estado | Responsable |
+| --- | --- | --- | --- |
+| I-01 | Nombres definitivos de las PK de `evaluacion_subprueba`, `respuesta_evaluacion` y `solicitud_calculo_subprueba` (hoy `id` en #41). | Resolver en GEN-37-BE | Backend (GEN-37-BE) |
+| I-02 | `baremo_bfa` no tiene FK a `test` ni a `version_formulario`: no se sabe a qué edición pertenece una norma. | Resolver en el modelo | Integración y DOC-34 |
+| I-03 | `rango_baremo_bfa.id_factor` es texto y no hay tabla de factores (FactorPsicometrico). | Resolver en el modelo | DOC-34 |
+| I-04 | El baremo no tiene grupo de población estructurado (edad mínima y máxima; AN, AD, UN), y Weill lo necesita para elegir la columna. | Resolver en el modelo | DOC-34 |
+| I-05 | Dónde se guardan los subtotales por lámina de Weill, que no son factores (H del tema DOC-34). | Resolver en el modelo | DOC-34 |
+| I-06 | Columnas de 7 y 9 años no monótonas: E30 las rechaza por rangos superpuestos, pero el docente pidió tomar la tabla tal como está (H-03). | Preguntar al docente | Iván |
+| I-07 | Percentil y CI para puntajes fuera de la tabla de Weill (H-04). | Preguntar al docente | Iván |
+| I-08 | Cuándo se usa AD o UN para mayores de 16 años (H-06). | Preguntar al docente | Iván |
+| I-09 | Lista de categorías de Weill: 7 en la tabla del docente frente a 6 en F-01 (H-02). | Preguntar al docente | Iván |
+| I-10 | `permitirRetroceso` (ENT-COM-13) no tiene columna ni aparece en el contrato. | Resolver en el modelo | DOC-32 e Integración |
+| I-11 | Cómo se aplica «a lo sumo una clave APROBADA por versión»: índice único parcial o regla de aplicación. | Resolver en el modelo | Backend y custodio de migraciones |
+| I-12 | Formato de `recurso_ref` y dónde se guardan las imágenes; además, `opcion_respuesta` no tiene recurso propio y Weill necesita una imagen por opción. | Resolver en el modelo | DOC-32 y Backend |
+| I-13 | Catálogo de valores de `accion` y `entidad_tipo` en `evento_auditoria`. | Resolver en el modelo | DOC-35 y Backend |
 
-### Registro y cierre
+### Consulta al docente (DOC-44)
 
-Por cada fila oficial se conserva el ID original, la pregunta, su responsable, el estado, la fecha, la fuente de evidencia y el cambio aplicable. Si consta el envío y a las 10:00 del 25 de noviembre falta respuesta, corresponde «Preguntar al docente – enviada 25-nov». Cuando haya respuesta verificable, se actualizan el registro y el documento del tema. Si afecta al diagrama, se avisa a Fernando Reyes y se traza el cambio a DOC-45. Una decisión posterior debe conservar su evidencia y la fecha real de incorporación.
+**Responsable del aporte:** Javier Josué Espinoza Blandón.  
+**Canal:** Davide Patiño remite al docente las preguntas funcionales acordadas con Iván.  
+**Evidencia disponible:** la consulta del 21/11/2026 por Google Chat se registra según la [revisión de Iván](https://github.com/Nell16/sistema-evaluaciones/pull/106#pullrequestreview-6058635309) y su [aclaración](https://github.com/Nell16/sistema-evaluaciones/pull/106#issuecomment-7164087416). Falta el enlace directo al hilo de Google Chat. La evidencia revisada no acredita un nuevo envío el 25/11/2026 ni respuestas posteriores.
+
+#### Weill — preguntas para seguimiento con el docente
+
+En la consulta del 21/11 el docente indicó que Weill no tiene límite de tiempo (configurable), que la clave es la misma en las cinco láminas, que el baremo se toma como está y es configurable, y que las omisiones valen cero. Conservar esos antecedentes sin repetir las preguntas ya resueltas.
+
+| ID de DOC-42 | Pregunta de seguimiento | Evidencia del 21/11 | Estado y siguiente paso |
+| --- | --- | --- | --- |
+| I-06 | ¿Cómo se conserva el baremo oficial de 7 y 9 años si E30 rechaza sus rangos superpuestos? | Según Iván, el docente pidió conservar la tabla tal como está. Falta una instrucción específica para los rangos superpuestos. | Aclaración pendiente. Preservar el baremo de origen y coordinar con Backend el tratamiento autorizado. |
+| I-07 | ¿Cómo se obtiene el percentil y el CI cuando el puntaje queda fuera de la tabla de Weill? | El docente indicó que no sabía y remitió a quienes trabajaron el test. | Derivada al equipo que trabajó Weill. Sin criterio confirmado para extrapolar. |
+| I-08 | ¿Cuándo corresponde AD y cuándo UN para una persona mayor de 16 años? | Se consultó. La respuesta aclaró que el instrumento no se usa para admisión y dejó pendiente la regla AD/UN. | Respuesta parcial. Solicitar solo el criterio AD/UN. |
+| I-09 | ¿Cuál es el listado autorizado de categorías, dado que la tabla tiene siete y F-01 registra seis? | Iván aclaró que esta pregunta no se formuló el 21/11. | Pregunta nueva, sin evidencia de envío. |
+
+#### Otras incógnitas funcionales registradas
+
+Estas filas conservan sus IDs de origen para conciliación con Iván. El seguimiento inmediato indicado en la revisión es I-06 a I-09. Para las filas siguientes, las fuentes acreditan el hallazgo, pero faltan constancia de envío al docente y respuesta.
+
+| ID | Consulta por confirmar | Fuente | Estado |
+| --- | --- | --- | --- |
+| ALL-01 | Confirmar la numeración canónica de la segunda parte de Allport y cómo se aplica la variante por sexo. | [DOC-38](nota-allport.md), F1 pp. 9–10. | Abierta. |
+| ALL-02 | Confirmar cómo calificar Allport si la persona omite una respuesta permitida por las instrucciones. | [DOC-38](nota-allport.md), F1 pp. 1, 6 y 10. | Abierta. |
+| ALL-03 | Identificar el manual y el baremo de Allport aplicables a esta edición y población. | [DOC-38](nota-allport.md), F1 pp. 1–11. | Abierta. |
+| OTR-01 | Confirmar la corrección de Thurstone, el tratamiento de omisiones, el significado del índice y la fuente normativa. | [DOC-34-OTR, PR #119](https://github.com/Nell16/sistema-evaluaciones/pull/119). | Abierta. |
+| OTR-02 | Confirmar los criterios funcionales de Allport y la edición aplicable. Mantener el vínculo con ALL-01 a ALL-03 y las demás filas de DOC-38 para evitar duplicar consultas. | [DOC-34-OTR, PR #119](https://github.com/Nell16/sistema-evaluaciones/pull/119) y [DOC-38](nota-allport.md). | Abierta. |
+| OTR-03 | Confirmar la versión autorizada de la entrevista y si existe un informe cualitativo digital, así como su revisión y publicación. | [DOC-34-OTR, PR #119](https://github.com/Nell16/sistema-evaluaciones/pull/119). | Abierta. |
+| OV-01 | Confirmar si el cuestionario o entrevista de Orientación vocacional se aplica sin límite de tiempo. | [Registro DOC-39](https://app.clickup.com/t/90141806675/1k5fzqb0ft4), F1 p. 1 y F2 pp. 1–4. | Abierta. |
+| OV-02 | Confirmar si la salida de Orientación vocacional es exclusivamente cualitativa, dado que los formatos no definen puntaje ni escalas cuantitativas. | [Registro DOC-39](https://app.clickup.com/t/90141806675/1k5fzqb0ft4), F1 p. 1 y F2 pp. 1–4. | Abierta. |
+| OV-03 | Confirmar si la interpretación de Orientación vocacional es cualitativa o si existe una fuente normativa autorizada. | [Registro DOC-39](https://app.clickup.com/t/90141806675/1k5fzqb0ft4), F1 p. 1 y F2 pp. 1–4. | Abierta. |
+
+Las filas I-01 a I-05, I-10 a I-13 y los cinco huecos de DOC-41 se mantienen en el seguimiento técnico de Backend e Integración. Para cada consulta pendiente, registrar su fecha real de envío, quién la envió, el enlace de evidencia y la respuesta o su estado. Si una respuesta afecta el diagrama, trasladar el cambio con su evidencia a DOC-45.
+
 ## Endpoints y tablas
 
 **Tarea:** DOC-41 · **Estado:** borrador. Muestra qué tablas lee y escribe cada endpoint del contrato (`docs/api/openapi.yaml`). Esta sección cubre **E1–E15** (Diego); **E16–E31** los completa Daysi en este mismo PR.
