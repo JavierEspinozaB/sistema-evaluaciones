@@ -41,3 +41,9 @@ flowchart TD
 | Uso sin ratón o lector de pantalla | Orden y foco visibles, controles con nombres accesibles, progreso y error anunciados sin depender del color. |
 
 **Verificación de este aporte:** inspección estática del código y contraste con DOC-09 v02 y OpenAPI. Falta ejecutar una validación funcional y de accesibilidad y contrastar los wireframes editables con la cobertura propuesta. El PR #100 conserva su propia revisión y ya tiene una observación sobre la convención del nombre de la rama.
+
+## Recorrido local complementario del prototipo
+
+El 27/11/2026 se verificó el commit `2b379a551174eb2ec2fb2eca2ce02629101ed032` de #100 en Chrome local, con datos ficticios y la aplicación iniciada con Vite. Se completaron los campos de inicio, se abrió la pantalla de instrucciones y se recorrieron las 60 posiciones hasta el cierre. La primera mostró lámina 1, posición 1 y la última lámina 5, posición 12. El navegador llegó a «Aplicación finalizada».
+
+La comprobación recorrió las posiciones sin seleccionar respuestas y constata el comportamiento del prototipo en memoria. En una segunda ejecución se seleccionó la primera opción y, al finalizar, el cierre mostró una selección de 60. Quedan pendientes la comprobación de accesibilidad, la validación de omisiones por Psicología, las llamadas a la API y el contraste de los editables. En el mismo commit pasaron lint, formato, typecheck, 115 pruebas y build del frontend.
