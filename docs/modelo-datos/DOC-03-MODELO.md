@@ -176,7 +176,7 @@ Un test agrega tablas propias con FK a estas tablas del núcleo, sin modificar s
 ## Cómo el modelo respalda la API
 
 **Tarea:** DOC-46 · **Responsable del aporte:** Javier Josué Espinoza Blandón  
-**Estado:** guion contrastado con las migraciones fusionadas para E3 y el soporte de E7. E9 se explica como diseño pendiente de validación física con DOC-45.
+**Estado:** guion contrastado con las migraciones fusionadas para E3 y el soporte de E7. Para E9 se verificó la tabla contenedora; la persistencia de las revisiones sigue pendiente de una migración oficial.
 
 ### Guion oral
 
@@ -198,7 +198,7 @@ Un test agrega tablas propias con FK a estas tablas del núcleo, sin modificar s
 
 **2:15–2:45 · E9, consultar resultados**
 
-> En E9, el diseño consulta el `resultado` de la evaluación y la referencia a su revisión vigente. El estado permite distinguir un cálculo en curso, un resultado pendiente de validación y uno disponible. La consulta propuesta devuelve la revisión vigente según los permisos del rol.
+> En E9, el diseño consulta el `resultado` de la evaluación y la referencia a su revisión vigente. El estado permite distinguir un cálculo en curso, un resultado pendiente de validación y uno disponible. La consulta de E9 usa los permisos del rol y la referencia vigente; publicar el detalle requiere también las tablas de revisiones.
 
 ### Contraste con el contrato y las migraciones
 
@@ -206,10 +206,10 @@ Un test agrega tablas propias con FK a estas tablas del núcleo, sin modificar s
 | --- | --- | --- | --- |
 | E3 | `POST /api/v1/evaluaciones` | `sujeto`, `periodo`, `test`, `version_formulario`, `configuracion_subprueba`, `evaluacion`, `evaluacion_subprueba` | El rescate GEN-35-BE (#125) incorpora E3, crea sujeto y período y establece sus FK desde evaluación. El motor (#104) crea evaluación y las aplicaciones de subprueba. |
 | E7 | `PUT /api/v1/evaluaciones/{evaluacionId}/subpruebas/{codigo}/respuestas` | `evaluacion_subprueba`, `pregunta`, `opcion_respuesta`, `respuesta_evaluacion` | El motor (#104) vincula la respuesta a la aplicación mediante una FK compuesta y referencia la pregunta y la opción con FK separadas. La comprobación de que la opción pertenece a la pregunta se debe verificar en la implementación final de E7. |
-| E9 | `GET /api/v1/evaluaciones/{evaluacionId}/resultados` | Las migraciones revisadas de `main` todavía no confirman `resultado` ni `revision_resultado`. | DOC-41 (#120) y el diagrama documentan el diseño. La revisión vigente se selecciona mediante `resultado.referencia_revision_vigente`. Verificar las tablas físicas con DOC-45 y el backend de E9 (#73) antes del cierre. |
+| E9 | `GET /api/v1/evaluaciones/{evaluacionId}/resultados` | `resultado`, incluida la columna `referencia_revision_vigente`, según la migración V202611251400 (#142). | El backend de E9 (#163) lee la revisión indicada por esa referencia. La definición de `revision_resultado` está propuesta en SQL y aún requiere una migración Flyway aprobada. |
 
 - [Contrato OpenAPI](../api/openapi.yaml)
 - [Motor de evaluación, PR #104](https://github.com/Nell16/sistema-evaluaciones/pull/104) · [Migración V202611240800](../../database/migrations/V202611240800__comun_motor_evaluacion.sql)
 - [Sujeto, período y E3, PR #125](https://github.com/Nell16/sistema-evaluaciones/pull/125) · [Migración V202611240830](../../database/migrations/V202611240830__comun_sujeto_periodo.sql)
 - [Mapa DOC-41, PR #98](https://github.com/Nell16/sistema-evaluaciones/pull/98) · [Ampliación del mapa, PR #120](https://github.com/Nell16/sistema-evaluaciones/pull/120)
-- [Diagrama ER](../diagramas/modelo-er.drawio) · [DOC-45](https://app.clickup.com/t/90141806675/1k5fzqb0fte) · [Backend de E9, PR #73](https://github.com/Nell16/sistema-evaluaciones/pull/73)
+- [Diagrama ER](../diagramas/modelo-er.drawio) · [DOC-45](https://app.clickup.com/t/90141806675/1k5fzqb0fte) · [Migración del contenedor](https://github.com/Nell16/sistema-evaluaciones/blob/6869cdd53da35ee17b6d33166abf97be05277898/database/migrations/V202611251400__comun_resultado_pendiente.sql) · [Backend de E9, PR #163](https://github.com/Nell16/sistema-evaluaciones/pull/163)
