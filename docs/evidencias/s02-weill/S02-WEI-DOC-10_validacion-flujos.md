@@ -40,4 +40,18 @@ flowchart TD
 | Resultado pendiente o acceso denegado | Estado explícito, sin puntajes ni información restringida. |
 | Uso sin ratón o lector de pantalla | Orden y foco visibles, controles con nombres accesibles, progreso y error anunciados sin depender del color. |
 
-**Verificación de este aporte:** inspección estática del código y contraste con DOC-09 v02 y OpenAPI. Falta ejecutar una validación funcional y de accesibilidad y contrastar los wireframes editables con la cobertura propuesta. El PR #100 conserva su propia revisión y ya tiene una observación sobre la convención del nombre de la rama.
+## Validación funcional ejecutada
+
+**Fecha:** 27/11/2026. **Entorno:** Chromium en modo sin interfaz, con la compilación del [PR #100](https://github.com/Nell16/sistema-evaluaciones/pull/100) fijada al commit `2b379a551174eb2ec2fb2eca2ce02629101ed032`, ruta `/weill/prototipo` y datos ficticios. Se verificaron interacciones y resultados visibles mediante Playwright.
+
+| Verificación | Resultado observado |
+| --- | --- |
+| Inicio e instrucciones | El botón de inicio está deshabilitado con los campos vacíos. Con los tres campos completos se muestran las instrucciones y «Comenzar» abre la primera posición. |
+| Secuencia | Se recorrieron las 60 posiciones de las cinco láminas. Cada posición presentó ocho opciones y se verificó la selección antes de avanzar. |
+| Omisión y cierre | Se avanzó sin seleccionar en una posición y se llegó al cierre con 59 selecciones de 60. Es el comportamiento observado del prototipo y la regla funcional de omitidos sigue pendiente de validación. |
+| Reinicio y recarga | «Volver al inicio» vacía el formulario. Un intento nuevo empieza sin selección y una recarga durante la aplicación vuelve al inicio. |
+| Entorno de prueba | No se observaron errores de página ni solicitudes fetch/XHR durante el recorrido. `npm run typecheck`, `npm test` (115/115) y `npm run build` finalizaron correctamente. |
+
+**Pendiente para la entrega integral:** cotejar la edición final y los wireframes con la matriz, comprobar navegación con teclado y lector de pantalla, y validar administración, permisos, persistencia, recuperación, errores de API y resultados cuando exista una versión integrada. La prueba de ejecución respalda el flujo local de aplicación; la revisión funcional y técnica independiente sigue pendiente.
+
+El PR #100 conserva su propia revisión y una observación sobre la convención de nombres de rama.
