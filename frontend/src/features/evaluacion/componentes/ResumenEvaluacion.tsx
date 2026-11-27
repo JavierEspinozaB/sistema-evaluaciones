@@ -38,8 +38,9 @@ export function ResumenEvaluacion({
 }: ResumenEvaluacionProps) {
   const id = useId();
   const { cerradas, total, porcentaje } = calcularProgreso(evaluacion);
+  const testEvaluacion = test?.id === evaluacion.testId ? test : null;
   const nombre = (codigo: string) =>
-    test?.subpruebas.find((s) => s.codigo === codigo)?.nombre ?? codigo;
+    testEvaluacion?.subpruebas.find((s) => s.codigo === codigo)?.nombre ?? codigo;
   const periodo = periodos.find((p) => p.id === evaluacion.periodoId);
   const activa = evaluacion.subpruebaActiva;
   const siguiente = evaluacion.subpruebas.find((s) => s.estado === 'PENDIENTE');
@@ -61,7 +62,7 @@ export function ResumenEvaluacion({
         </div>
         <div>
           <dt>Test</dt>
-          <dd>{test && test.id === evaluacion.testId ? test.nombre : `ID ${evaluacion.testId}`}</dd>
+          <dd>{testEvaluacion?.nombre ?? `ID ${evaluacion.testId}`}</dd>
         </div>
         <div>
           <dt>Evaluado</dt>
