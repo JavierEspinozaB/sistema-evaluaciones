@@ -22,13 +22,13 @@ DOC-34-OTR reutiliza las tablas comunes de calificación para Thurstone y Allpor
 
 ## Incógnitas y decisiones
 
-Tarea DOC-42. Reúne las decisiones del modelo que tomaron los cuatro temas (DOC-32 a DOC-35) y las incógnitas que siguen abiertas. Cada incógnita queda resuelta con su fuente o marcada «Preguntar al docente». No incluye ítems, claves ni valores de baremos reales.
+Tarea DOC-42. Reúne las decisiones del modelo que tomaron los cuatro temas (DOC-32 a DOC-35) y las incógnitas que siguen abiertas. Cada incógnita funcional queda resuelta con su fuente o marcada «Preguntar al docente»; las técnicas quedan resueltas con su fuente técnica o en «Seguimiento técnico» de Backend e Integración, sin atribuir al docente decisiones de implementación (revisión de Integración en #146). No incluye ítems, claves ni valores de baremos reales.
 
 ### Decisiones del modelo
 
 | ID | Decisión | Fuente | Tema |
 | --- | --- | --- | --- |
-| D-01 | Los nombres que ya existen en `main` o en los PR #89, #41, #91, #50 y #69 no se renombran; los temas cuelgan sus tablas del núcleo. | Núcleo y glosario (DOC-31) | Todos |
+| D-01 | Los nombres que ya existen en `main` no se renombran; los temas cuelgan sus tablas del núcleo. Los PR #89, #41 y #91 fueron reemplazados por #105, #104 y #125 (ya fusionados); siguen como referencia #50 y #69. | Núcleo y glosario (DOC-31); PR #105, #104 y #125 | Todos |
 | D-02 | Las claves y baremos de BFA conservan `version_clave_bfa`, `entrada_clave_bfa`, `baremo_bfa` y `rango_baremo_bfa`. | PR #50 y #69; DOC-31 | DOC-34 |
 | D-03 | Weill Forma A es una sola subprueba de 60 preguntas; la lámina se deriva de la posición (12 por lámina). No se crean cinco subpruebas. | Nota Weill (DOC-36) §1 | DOC-32 / DOC-34 |
 | D-04 | Weill usa opción única 1–8 por pregunta; se puede finalizar con preguntas omitidas y valen 0. | Nota Weill §2 y §5 | DOC-33 / DOC-34 |
@@ -36,24 +36,27 @@ Tarea DOC-42. Reúne las decisiones del modelo que tomaron los cuatro temas (DOC
 | D-06 | Un dato normativo que no se puede calcular queda nulo con estado y motivo; nunca se rellena con 0. | Documento BFA ENT-BFA-10; Nota Weill §7 | DOC-34 |
 | D-07 | `sujeto`, `periodo` y `cuenta` usan los nombres físicos del núcleo (`codigo_institucional`, `fecha_nacimiento`, `fecha_inicio`, `fecha_fin`, `estado` ACTIVA/INHABILITADA…), no los atributos lógicos en camelCase de las fichas ENT-COM. | Núcleo y glosario (DOC-31) | DOC-35 |
 | D-08 | La duda I-01 de DOC-32 (estructura de Weill) queda resuelta: la Nota Weill fue aceptada el 24/11. Weill puede seguir el mismo patrón de clave: una entrada por pregunta (60 entradas, la secuencia de 12 repetida en las 5 láminas). | Nota Weill (DOC-36) §1, §2 y §5 | DOC-32 |
+| D-09 | `evento_auditoria`: la PK es `id_evento_auditoria` (regla 2 del núcleo: `id_<tabla>`) y el actor es `id_cuenta` → `cuenta.id_cuenta`, que reemplaza a `actor_ref`. Cuenta 1 : 0..N eventos; evaluación y aplicación de subprueba siguen como FK opcionales. Si hace falta registrar acciones del sistema sin persona, se usa una cuenta técnica en `cuenta`. Se corrigen el núcleo (sección «Núcleo y glosario») e `identidad-auditoria.md` (`id_evento` → `id_evento_auditoria`). | Revisión de Gabriel Pérez Calero en DOC-35-COM (24/11, 11:22); `identidad-auditoria.md` §3 y §4; regla 2 del núcleo | DOC-35 / DOC-31 |
+| D-10 | Aplicación y respuestas: BFA agrega la tabla `aplicacion_bfa` (PK y FK `id_evaluacion`, evaluación 1 : 0..1) con `alcance`, `modalidad`, `finalidad_examen` y `edad_al_aplicar`; es una excepción a la regla 2, igual que `solicitud_calculo_subprueba`. Fluidez Verbal no crea tabla: la letra va en `evaluacion_subprueba.letra_inicial`. Weill no necesita tablas propias en este tema: una fila de `evaluacion_subprueba` por evaluación y la opción en `respuesta_evaluacion.id_opcion`. | `aplicacion-respuestas.md` (DOC-33-BFAW, #124) | DOC-33 |
+| D-11 | Calificación y baremos: se agregan `escala`, `regla_calificacion`, `revision_resultado`, `puntaje_subprueba`, `resultado_escala` y `conversion_resultado_escala`, todas colgando del núcleo. El criterio de población del baremo usa `edad_minima`, `edad_maxima` y `grupo` (AN, AD, UN). Weill guarda los subtotales como escalas `WEI-L1` a `WEI-L5` (`NO_APLICA`) y el total como `WEI`, la única salida que se convierte. | `calificacion-baremos.md` (DOC-34-BFAW, #114) | DOC-34 |
 
 ### Incógnitas
 
 | ID | Incógnita e impacto en el modelo | Estado | Responsable |
 | --- | --- | --- | --- |
-| I-01 | Nombres definitivos de las PK de `evaluacion_subprueba`, `respuesta_evaluacion` y `solicitud_calculo_subprueba` (hoy `id` en #41). | Resolver en GEN-37-BE | Backend (GEN-37-BE) |
-| I-02 | `baremo_bfa` no tiene FK a `test` ni a `version_formulario`: no se sabe a qué edición pertenece una norma. | Resolver en el modelo | Integración y DOC-34 |
-| I-03 | `rango_baremo_bfa.id_factor` es texto y no hay tabla de factores (FactorPsicometrico). | Resolver en el modelo | DOC-34 |
-| I-04 | El baremo no tiene grupo de población estructurado (edad mínima y máxima; AN, AD, UN), y Weill lo necesita para elegir la columna. | Resolver en el modelo | DOC-34 |
-| I-05 | Dónde se guardan los subtotales por lámina de Weill, que no son factores (H del tema DOC-34). | Resolver en el modelo | DOC-34 |
+| I-01 | Nombres definitivos de las PK de `evaluacion_subprueba`, `respuesta_evaluacion` y `solicitud_calculo_subprueba`. | Resuelta con fuente: la migración `V202611240800__comun_motor_evaluacion.sql` (#104) usa `id_evaluacion_subprueba`, `id_respuesta_evaluacion` y, en `solicitud_calculo_subprueba`, PK `id_evaluacion_subprueba`, como fija el núcleo. | Backend (GEN-37-BE) |
+| I-02 | `baremo_bfa` no tiene FK a `test` ni a `version_formulario`. | Resuelta con fuente: se conserva la cabecera de #69 sin FK saliente; la edición se identifica por la revisión que usa el baremo (`revision_resultado`) y por la regla de su versión (`calificacion-baremos.md`). | DOC-34 |
+| I-03 | `rango_baremo_bfa.id_factor` es texto y no hay tabla de factores. | Resuelta con fuente: `escala` cataloga factores, subtotales y totales por test; `rango_baremo_bfa.id_factor` se mantiene como código de texto sin FK física (`calificacion-baremos.md`). | DOC-34 |
+| I-04 | Grupo de población del baremo (edad mínima y máxima; AN, AD, UN). | Resuelta con fuente: el criterio usa `edad_minima`, `edad_maxima` y `grupo`; la regla AD/UN sigue en I-08 (`calificacion-baremos.md`). | DOC-34 |
+| I-05 | Dónde se guardan los subtotales por lámina de Weill. | Resuelta con fuente: una fila de `resultado_escala` por lámina (`WEI-L1` a `WEI-L5`, `NO_APLICA`) y el total en `WEI` (`calificacion-baremos.md`). | DOC-34 |
 | I-06 | Columnas de 7 y 9 años no monótonas: E30 las rechaza por rangos superpuestos, pero el docente pidió tomar la tabla tal como está (H-03). | Preguntar al docente | Iván |
 | I-07 | Percentil y CI para puntajes fuera de la tabla de Weill (H-04). | Preguntar al docente | Iván |
 | I-08 | Cuándo se usa AD o UN para mayores de 16 años (H-06). | Preguntar al docente | Iván |
 | I-09 | Lista de categorías de Weill: 7 en la tabla del docente frente a 6 en F-01 (H-02). | Preguntar al docente | Iván |
-| I-10 | `permitirRetroceso` (ENT-COM-13) no tiene columna ni aparece en el contrato. | Resolver en el modelo | DOC-32 e Integración |
-| I-11 | Cómo se aplica «a lo sumo una clave APROBADA por versión»: índice único parcial o regla de aplicación. | Resolver en el modelo | Backend y custodio de migraciones |
-| I-12 | Formato de `recurso_ref` y dónde se guardan las imágenes; además, `opcion_respuesta` no tiene recurso propio y Weill necesita una imagen por opción. | Resolver en el modelo | DOC-32 y Backend |
-| I-13 | Catálogo de valores de `accion` y `entidad_tipo` en `evento_auditoria`. | Resolver en el modelo | DOC-35 y Backend |
+| I-10 | `permitirRetroceso` (ENT-COM-13) en el modelo. | Resuelta con fuente: `evaluacion_subprueba.permitir_retroceso BOOLEAN NOT NULL DEFAULT TRUE` en la migración `V202611240800__comun_motor_evaluacion.sql` (#104). El contrato (E2, E26) todavía no lo expone: queda como brecha B-4 de S02-WEI-DOC-09. | DOC-32 e Integración |
+| I-11 | Cómo se aplica «a lo sumo una clave APROBADA por versión»: índice único parcial o regla de aplicación. | En `main`, `V202611251600__bfa_claves_versionadas.sql` exige que el par `(id_version_formulario, version)` sea único. Sigue pendiente decidir cómo garantizar una sola clave APROBADA por formulario; la migración no define un índice único parcial para ese estado. | Backend y custodio de migraciones |
+| I-12 | Formato de `recurso_ref` (ya existe en `pregunta` y en `opcion_respuesta`) y dónde se guardan las imágenes de BFA y Weill; E28 todavía no permite cargar el recurso de una opción. | Seguimiento técnico: en `main`, `recurso_ref` es `TEXT` no vacío; falta decidir el almacenamiento de las imágenes. | DOC-32 y Backend |
+| I-13 | Catálogo de valores de `accion` y `entidad_tipo` en `evento_auditoria`. | Resuelta con fuente técnica: la migración `V202611251204__comun_evento_auditoria.sql` los define como texto no vacío, sin catálogo en la base; los valores los fija el servidor (hoy `INICIAR_EVALUACION` y `FINALIZAR_EVALUACION` sobre `EVALUACION`; `INICIAR_SUBPRUEBA` sobre `EVALUACION_SUBPRUEBA`). | DOC-35 y Backend |
 
 ## Endpoints y tablas
 
@@ -169,7 +172,7 @@ Origen: **main** = ya fusionada; **#89**, **#41**, **#91** = en el PR indicado (
 | `respuesta_evaluacion` | #41 (ids ajustados en GEN-37-BE) | `id_respuesta_evaluacion` | `id_evaluacion` → evaluacion; `id_pregunta` → pregunta (nula en Fluidez Verbal); `id_opcion` → opcion_respuesta (nula en texto libre) | `valor_texto`, `orden_entrada`, `fecha_registro` |
 | `solicitud_calculo_subprueba` | #41 | `id_evaluacion_subprueba` (PK y FK) | `id_evaluacion_subprueba` → evaluacion_subprueba; `id_evaluacion` → evaluacion | `codigo_test`, `codigo_subprueba`, `fecha_cierre`, `procesada_en` |
 | `resultado` | **nueva** (ENT-COM-10) | `id_resultado` | `id_evaluacion` → evaluacion (única: 0..1 por evaluación) | `estado` (CALCULANDO, PENDIENTE_VALIDACION, DISPONIBLE), `creado_en`, `actualizado_en`, `referencia_revision_vigente` (obligatoria en DISPONIBLE; apunta a la revisión de cálculo del módulo, sin FK en el núcleo) |
-| `evento_auditoria` | **nueva** (ENT-COM-11) | `id_evento_auditoria` | `id_evaluacion` → evaluacion (nula en eventos administrativos); `id_evaluacion_subprueba` → evaluacion_subprueba (nula) | `actor_ref`, `accion`, `entidad_tipo`, `entidad_id`, `ocurrido_en`; inmutable (solo inserciones) |
+| `evento_auditoria` | **nueva** (ENT-COM-11) | `id_evento_auditoria` | `id_evaluacion` → evaluacion (nula en eventos administrativos); `id_evaluacion_subprueba` → evaluacion_subprueba (nula); `id_cuenta` → cuenta (actor, D-09) | `accion`, `entidad_tipo`, `entidad_id`, `ocurrido_en`; inmutable (solo inserciones) |
 
 Tablas de los temas que cuelgan del núcleo (nombres ya fijados por sus PR; no se redefinen aquí):
 

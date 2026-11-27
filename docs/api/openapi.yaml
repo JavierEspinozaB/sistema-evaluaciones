@@ -1234,7 +1234,7 @@ components:
       type: object
       properties:
         evaluacionId: { type: integer, format: int64 }
-        resultadoId: { type: integer, format: int64 }
+        resultadoId: { type: integer, format: int64, nullable: true, description: Nulo si todavía no existe un contenedor de resultado. }
         estadoResultado: { type: string, description: 'Ej. CALCULANDO, PENDIENTE_VALIDACION o DISPONIBLE.' }
         versionFormularioId: { type: integer, format: int64 }
         calificacionId: { type: integer, format: int64, nullable: true }
