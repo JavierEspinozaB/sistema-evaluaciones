@@ -52,6 +52,12 @@ flowchart TD
 | Reinicio y recarga | «Volver al inicio» vacía el formulario. Un intento nuevo empieza sin selección y una recarga durante la aplicación vuelve al inicio. |
 | Entorno de prueba | No se observaron errores de página ni solicitudes fetch/XHR durante el recorrido. `npm run typecheck`, `npm test` (115/115) y `npm run build` finalizaron correctamente. |
 
-**Pendiente para la entrega integral:** cotejar la edición final y los wireframes con la matriz, comprobar navegación con teclado y lector de pantalla, y validar administración, permisos, persistencia, recuperación, errores de API y resultados cuando exista una versión integrada. La prueba de ejecución respalda el flujo local de aplicación; la revisión funcional y técnica independiente sigue pendiente.
+**Pendiente para la entrega integral:** cotejar una edición final aprobada con la matriz, comprobar la gestión de foco y el lector de pantalla, y validar administración, permisos, persistencia, recuperación, errores de API y resultados cuando exista una versión integrada. La prueba de ejecución respalda el flujo local de aplicación; la revisión funcional y técnica independiente sigue pendiente.
 
 El PR #100 conserva su propia revisión y una observación sobre la convención de nombres de rama.
+
+## Cotejo de los wireframes v01
+
+Se inspeccionaron las siete láminas HTML y el manifiesto del [ZIP editable del sprint](https://drive.google.com/file/d/1BE2Uh49OYHF9rPXEz9FFiKBezERUTeor/view?usp=drive_link). El mapa y la tabla pantalla–RF cubren inicio e instrucciones (W01–W02), reactivo y estados de recuperación (W03–W04), cierre y resultados (W05–W06) y administración (W07). El diseño de guardado, recuperación, resultados y administración describe el flujo previsto. En el prototipo verificado, el guardado es local a la sesión y la recarga pierde el avance.
+
+La prueba con teclado comprobó el orden entre los campos del formulario, el inicio con Intro, la selección y el cambio de opción con Espacio y flecha, y el avance con Tab e Intro desde el grupo de respuestas. El punto de foco inicial en cada pantalla se seleccionó para la prueba. Quedan pendientes las pruebas completas de gestión de foco y lector de pantalla.
