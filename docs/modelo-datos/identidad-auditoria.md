@@ -84,7 +84,7 @@ Registra quién hizo qué, sobre qué y cuándo. El nombre físico `evento_audit
 
 | Pregunta | Columna | Clave | Obligatorio | Descripción |
 | --- | --- | --- | --- | --- |
-| — | `id_evento` | PK | Sí | Identificador del evento. |
+| — | `id_evento_auditoria` | PK | Sí | Identificador del evento (regla 2 del núcleo, D-09). |
 | **Quién** | `id_cuenta` | FK → `cuenta.id_cuenta` | Sí | Cuenta que actuó. No es el `sujeto` por defecto. |
 | **Qué** | `accion` | — | Sí | Tipo de acción (catálogo por validar; lo fija el servidor). Se usa `accion` y no `tipo`, para no confundirlo con `entidad_tipo`. |
 | **Sobre qué** | `entidad_tipo`, `entidad_id` | — | Sí | Entidad afectada e id; deben ser coherentes entre sí. |
