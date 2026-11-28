@@ -1,0 +1,412 @@
+TEST-34 — validación local de las carpetas «Gestión» y «Administración» (tests/api/BFA.postman_collection.json)
+Fecha: 2026-11-27, 16:41 (hora de Nicaragua). Ejecutó: Rodrigo Romero (Testing).
+Backend: main 697c3bb en local, perfil demo (test BFA DEMO-1 publicado), PostgreSQL 17 en una base nueva.
+Cuentas ficticias: COORDINADOR 9971 con una sesión cargada en la base (E13 no registra coordinadores: 403 ROL_NO_AUTORIZADO); SUJETO sujeto-t34@ejemplo.test registrado con E13 e iniciando sesión con E14 (contraseña de prueba generada en la corrida, no guardada). Sujeto 1 «Asignado TEST-34» asignado al coordinador en cuenta_sujeto_asignado.
+Resultado: 52 pasan, 7 fallan, 1 BLOQUEADO.
+  - Fallan por endpoints que no están en main: E30 (POST /api/v1/baremos, BFA-BE-37 #135) ×4 y E31 (POST /api/v1/versiones/{id}/publicar, GEN-45-BE #190) ×2: 404.
+  - Falla E25-04: un test inexistente devuelve 404 RECURSO_NO_ENCONTRADO; el contrato de E25 dice 404 TEST_NO_ENCONTRADO.
+  - BLOQUEADO E29-01: el positivo exige una entrada por cada reactivo cerrado del borrador y ninguna API lista las preguntas de un borrador.
+Las salidas no contienen la contraseña de prueba ni el token (comprobado).
+No es la corrida contra la URL pública: esa la lanza Rodrigo con la contraseña demo y necesita un sujeto asignado (sujeto_id) en la base pública.
+
+------------------------------------------------------------------ salida de newman (reporter cli)
+newman
+
+BFA — API publicada (Sprint 03)
+
+□ Administración
+└ PREP E14 sesión de una cuenta SUJETO (para los 403) → 200
+  POST http://localhost:8080/api/v1/auth/sesion [200 OK, 461B, 1087ms]
+  √  HTTP 200
+
+└ PREP E1 y E2: test BFA y versión publicada → 200
+  GET http://localhost:8080/api/v1/tests [200 OK, 253B, 16ms]
+  √  HTTP 200
+  √  Hay un test BFA
+  GET http://localhost:8080/api/v1/tests/1 [200 OK, 2.97kB, 38ms]
+
+□ Administración / E25 Crear versión
+└ E25-01 positivo → 201
+  POST http://localhost:8080/api/v1/tests/1/versiones [201 Created, 239B, 452ms]
+  √  HTTP 201
+  √  BORRADOR del test BFA
+
+└ E25-02 mismo código de versión → 409
+  POST http://localhost:8080/api/v1/tests/1/versiones [409 Conflict, 359B, 14ms]
+  √  HTTP 409
+  √  Formato común de error
+
+└ E25-03 sin codigoVersion → 400 SOLICITUD_INVALIDA
+  POST http://localhost:8080/api/v1/tests/1/versiones [400 Bad Request, 1.04kB, 19ms]
+  √  HTTP 400
+  √  Formato común de error con codigo SOLICITUD_INVALIDA
+
+└ E25-04 test inexistente → 404 TEST_NO_ENCONTRADO
+  POST http://localhost:8080/api/v1/tests/999999999/versiones [404 Not Found, 354B, 31ms]
+  √  HTTP 404
+  1. Formato común de error con codigo TEST_NO_ENCONTRADO
+
+└ E25-05 sin token → 401 NO_AUTENTICADO
+  POST http://localhost:8080/api/v1/tests/1/versiones [401 Unauthorized, 364B, 2ms]
+  √  HTTP 401
+  √  Formato común de error con codigo NO_AUTENTICADO
+
+└ E25-06 rol SUJETO → 403 SIN_PERMISO
+  POST http://localhost:8080/api/v1/tests/1/versiones [403 Forbidden, 346B, 8ms]
+  √  HTTP 403
+  √  Formato común de error con codigo SIN_PERMISO
+
+□ Administración / E26 Configurar subprueba
+└ E26-01 VOC1 del borrador → 200
+  PUT http://localhost:8080/api/v1/versiones/2/configuraciones/VOC1 [200 OK, 355B, 53ms]
+  √  HTTP 200
+  √  Devuelve la configuración guardada con las instrucciones nuevas
+
+└ E26-02 versión publicada → 409 VERSION_NO_EDITABLE
+  PUT http://localhost:8080/api/v1/versiones/1/configuraciones/VOC1 [409 Conflict, 342B, 8ms]
+  √  HTTP 409
+  √  Formato común de error con codigo VERSION_NO_EDITABLE
+
+└ E26-03 tipoRespuesta inválido → 400 SOLICITUD_INVALIDA
+  PUT http://localhost:8080/api/v1/versiones/2/configuraciones/VOC1 [400 Bad Request, 1.5kB, 7ms]
+  √  HTTP 400
+  √  Formato común de error con codigo SOLICITUD_INVALIDA
+
+└ E26-04 sin token → 401 NO_AUTENTICADO
+  PUT http://localhost:8080/api/v1/versiones/2/configuraciones/VOC1 [401 Unauthorized, 379B, 3ms]
+  √  HTTP 401
+  √  Formato común de error con codigo NO_AUTENTICADO
+
+└ E26-05 rol SUJETO → 403 SIN_PERMISO
+  PUT http://localhost:8080/api/v1/versiones/2/configuraciones/VOC1 [403 Forbidden, 361B, 6ms]
+  √  HTTP 403
+  √  Formato común de error con codigo SIN_PERMISO
+
+□ Administración / E27 Agregar pregunta
+└ E27-01 positivo → 201
+  POST http://localhost:8080/api/v1/versiones/2/configuraciones/VOC1/preguntas [201 Created, 322B, 16ms]
+  √  HTTP 201
+  √  Devuelve el id de la pregunta
+
+└ E27-02 mismo número visible → 422 PREGUNTA_DUPLICADA
+  POST http://localhost:8080/api/v1/versiones/2/configuraciones/VOC1/preguntas [422 Unprocessable Entity (WebDAV) (RFC 4918), 382B, 10ms]
+  √  HTTP 422
+  √  Formato común de error con codigo PREGUNTA_DUPLICADA
+
+└ E27-03 versión publicada → 409 VERSION_NO_EDITABLE
+  POST http://localhost:8080/api/v1/versiones/1/configuraciones/VOC1/preguntas [409 Conflict, 352B, 9ms]
+  √  HTTP 409
+  √  Formato común de error con codigo VERSION_NO_EDITABLE
+
+└ E27-04 sin enunciado → 400 SOLICITUD_INVALIDA
+  POST http://localhost:8080/api/v1/versiones/2/configuraciones/VOC1/preguntas [400 Bad Request, 1kB, 6ms]
+  √  HTTP 400
+  √  Formato común de error con codigo SOLICITUD_INVALIDA
+
+└ E27-05 sin token → 401 NO_AUTENTICADO
+  POST http://localhost:8080/api/v1/versiones/2/configuraciones/VOC1/preguntas [401 Unauthorized, 386B, 4ms]
+  √  HTTP 401
+  √  Formato común de error con codigo NO_AUTENTICADO
+
+└ E27-06 rol SUJETO → 403 SIN_PERMISO
+  POST http://localhost:8080/api/v1/versiones/2/configuraciones/VOC1/preguntas [403 Forbidden, 371B, 7ms]
+  √  HTTP 403
+  √  Formato común de error con codigo SIN_PERMISO
+
+□ Administración / E28 Guardar opciones
+└ E28-01 positivo → 200
+  PUT http://localhost:8080/api/v1/versiones/2/preguntas/79/opciones [200 OK, 533B, 35ms]
+  √  HTTP 200
+  √  Devuelve las opciones A a E
+
+└ E28-02 pregunta inexistente → 404 RECURSO_NO_ENCONTRADO
+  PUT http://localhost:8080/api/v1/versiones/2/preguntas/999999999/opciones [404 Not Found, 356B, 8ms]
+  √  HTTP 404
+  √  Formato común de error con codigo RECURSO_NO_ENCONTRADO
+
+└ E28-03 sin opciones → 400 SOLICITUD_INVALIDA
+  PUT http://localhost:8080/api/v1/versiones/2/preguntas/79/opciones [400 Bad Request, 984B, 6ms]
+  √  HTTP 400
+  √  Formato común de error con codigo SOLICITUD_INVALIDA
+
+└ E28-04 sin token → 401 NO_AUTENTICADO
+  PUT http://localhost:8080/api/v1/versiones/2/preguntas/79/opciones [401 Unauthorized, 377B, 2ms]
+  √  HTTP 401
+  √  Formato común de error con codigo NO_AUTENTICADO
+
+└ E28-05 rol SUJETO → 403 SIN_PERMISO
+  PUT http://localhost:8080/api/v1/versiones/2/preguntas/79/opciones [403 Forbidden, 362B, 6ms]
+  √  HTTP 403
+  √  Formato común de error con codigo SIN_PERMISO
+
+□ Administración / E29 Cargar clave
+└ E29-01 positivo: clave completa del borrador → 200
+  PUT http://localhost:8080/api/v1/versiones/2/clave [400 Bad Request, 410B, 8ms]
+  2. BLOQUEADO: falta {{clave_completa}}
+
+└ E29-02 versión publicada → 409 VERSION_NO_EDITABLE
+  PUT http://localhost:8080/api/v1/versiones/1/clave [409 Conflict, 356B, 11ms]
+  √  HTTP 409
+  √  Formato común de error con codigo VERSION_NO_EDITABLE
+
+└ E29-03 sin entradas → 400 SOLICITUD_INVALIDA
+  PUT http://localhost:8080/api/v1/versiones/2/clave [400 Bad Request, 381B, 7ms]
+  √  HTTP 400
+  √  Formato común de error con codigo SOLICITUD_INVALIDA
+
+└ E29-04 sin token → 401 NO_AUTENTICADO
+  PUT http://localhost:8080/api/v1/versiones/2/clave [401 Unauthorized, 364B, 2ms]
+  √  HTTP 401
+  √  Formato común de error con codigo NO_AUTENTICADO
+
+└ E29-05 rol SUJETO → 403 SIN_PERMISO
+  PUT http://localhost:8080/api/v1/versiones/2/clave [403 Forbidden, 346B, 6ms]
+  √  HTTP 403
+  √  Formato común de error con codigo SIN_PERMISO
+
+□ Administración / E30 Cargar baremo
+└ E30-01 positivo → 201
+  POST http://localhost:8080/api/v1/baremos [404 Not Found, 363B, 16ms]
+  3. HTTP 201
+
+└ E30-02 rangos superpuestos → 422 BAREMO_INVALIDO
+  POST http://localhost:8080/api/v1/baremos [404 Not Found, 363B, 7ms]
+  4. HTTP 422
+  5. Formato común de error con codigo BAREMO_INVALIDO
+
+└ E30-03 sin nombre → 400 SOLICITUD_INVALIDA
+  POST http://localhost:8080/api/v1/baremos [404 Not Found, 363B, 6ms]
+  6. HTTP 400
+  7. Formato común de error con codigo SOLICITUD_INVALIDA
+
+└ E30-04 sin token → 401 NO_AUTENTICADO
+  POST http://localhost:8080/api/v1/baremos [401 Unauthorized, 354B, 2ms]
+  √  HTTP 401
+  √  Formato común de error con codigo NO_AUTENTICADO
+
+└ E30-05 rol SUJETO → 403 SIN_PERMISO
+  POST http://localhost:8080/api/v1/baremos [404 Not Found, 363B, 6ms]
+  8. HTTP 403
+  9. Formato común de error con codigo SIN_PERMISO
+
+□ Administración / E31 Publicar versión
+└ E31-01 versión ya publicada → 409 VERSION_NO_EDITABLE
+  POST http://localhost:8080/api/v1/versiones/1/publicar [404 Not Found, 376B, 9ms]
+ 10. HTTP 409
+ 11. Formato común de error con codigo VERSION_NO_EDITABLE
+
+└ E31-02 sin token → 401 NO_AUTENTICADO
+  POST http://localhost:8080/api/v1/versiones/2/publicar [401 Unauthorized, 367B, 2ms]
+  √  HTTP 401
+  √  Formato común de error con codigo NO_AUTENTICADO
+
+└ E31-03 rol SUJETO → 403 SIN_PERMISO
+  POST http://localhost:8080/api/v1/versiones/2/publicar [404 Not Found, 376B, 7ms]
+ 12. HTTP 403
+ 13. Formato común de error con codigo SIN_PERMISO
+
+□ Gestión
+└ PREP E14 sesión de una cuenta SUJETO (para los 403) → 200
+  POST http://localhost:8080/api/v1/auth/sesion [200 OK, 461B, 1421ms]
+  √  HTTP 200
+
+□ Gestión / E18 Registrar sujeto
+└ E18-01 positivo → 201
+  POST http://localhost:8080/api/v1/sujetos [201 Created, 305B, 19ms]
+  √  HTTP 201
+  √  Devuelve id, identificadorInstitucional, nombres y apellidos
+  √  Location apunta al sujeto creado
+
+└ E18-02 mismo identificador → 409 SUJETO_DUPLICADO
+  POST http://localhost:8080/api/v1/sujetos [409 Conflict, 379B, 9ms]
+  √  HTTP 409
+  √  Formato común de error con codigo SUJETO_DUPLICADO
+
+└ E18-03 sin nombres → 400 SOLICITUD_INVALIDA
+  POST http://localhost:8080/api/v1/sujetos [400 Bad Request, 381B, 7ms]
+  √  HTTP 400
+  √  Formato común de error con codigo SOLICITUD_INVALIDA
+
+└ E18-04 sin token → 401 NO_AUTENTICADO
+  POST http://localhost:8080/api/v1/sujetos [401 Unauthorized, 354B, 3ms]
+  √  HTTP 401
+  √  Formato común de error con codigo NO_AUTENTICADO
+
+└ E18-05 rol SUJETO → 403 SIN_PERMISO
+  POST http://localhost:8080/api/v1/sujetos [403 Forbidden, 336B, 5ms]
+  √  HTTP 403
+  √  Formato común de error con codigo SIN_PERMISO
+
+□ Gestión / E19 Consultar sujeto
+└ E19-01 sujeto asignado → 200
+  GET http://localhost:8080/api/v1/sujetos/1 [200 OK, 269B, 9ms]
+  √  HTTP 200
+  √  Devuelve id e identificadorInstitucional
+
+└ E19-02 sujeto recién creado sin asignación → 403 SIN_PERMISO
+  GET http://localhost:8080/api/v1/sujetos/2 [403 Forbidden, 338B, 6ms]
+  √  HTTP 403
+  √  Formato común de error con codigo SIN_PERMISO
+
+└ E19-03 inexistente → 403 SIN_PERMISO
+  GET http://localhost:8080/api/v1/sujetos/999999999 [403 Forbidden, 346B, 7ms]
+  √  HTTP 403
+  √  Formato común de error con codigo SIN_PERMISO
+
+└ E19-04 sin token → 401 NO_AUTENTICADO
+  GET http://localhost:8080/api/v1/sujetos/1 [401 Unauthorized, 356B, 2ms]
+  √  HTTP 401
+  √  Formato común de error con codigo NO_AUTENTICADO
+
+□ Gestión / E23 Buscar sujeto
+└ E23-01 identificador de un sujeto asignado → 200
+  GET http://localhost:8080/api/v1/sujetos?identificadorInstitucional=T34-ASIGNADO-01 [200 OK, 271B, 9ms]
+  √  HTTP 200
+  √  Una lista con el sujeto asignado
+
+└ E23-02 identificador de un sujeto no asignado → 200
+  GET http://localhost:8080/api/v1/sujetos?identificadorInstitucional=T34-1795819305593 [200 OK, 166B, 7ms]
+  √  HTTP 200
+  √  Lista vacía: no devuelve un sujeto ajeno
+
+└ E23-03 sin token → 401 NO_AUTENTICADO
+  GET http://localhost:8080/api/v1/sujetos?identificadorInstitucional=T34-X [401 Unauthorized, 354B, 1ms]
+  √  HTTP 401
+  √  Formato común de error con codigo NO_AUTENTICADO
+
+□ Gestión / E20 Crear período
+└ E20-01 positivo → 201
+  POST http://localhost:8080/api/v1/periodos [201 Created, 337B, 85ms]
+  √  HTTP 201
+  √  Devuelve id, codigo, denominacion, inicio y fin
+  √  Location apunta al período creado
+
+└ E20-02 mismo código → 409 PERIODO_DUPLICADO
+  POST http://localhost:8080/api/v1/periodos [409 Conflict, 363B, 7ms]
+  √  HTTP 409
+  √  Formato común de error con codigo PERIODO_DUPLICADO
+
+└ E20-03 inicio posterior al fin → 422 PERIODO_INVALIDO
+  POST http://localhost:8080/api/v1/periodos [422 Unprocessable Entity (WebDAV) (RFC 4918), 401B, 5ms]
+  √  HTTP 422
+  √  Formato común de error con codigo PERIODO_INVALIDO
+
+└ E20-04 sin codigo → 400 SOLICITUD_INVALIDA
+  POST http://localhost:8080/api/v1/periodos [400 Bad Request, 388B, 6ms]
+  √  HTTP 400
+  √  Formato común de error con codigo SOLICITUD_INVALIDA
+
+└ E20-05 sin token → 401 NO_AUTENTICADO
+  POST http://localhost:8080/api/v1/periodos [401 Unauthorized, 355B, 2ms]
+  √  HTTP 401
+  √  Formato común de error con codigo NO_AUTENTICADO
+
+└ E20-06 rol SUJETO → 403 SIN_PERMISO
+  POST http://localhost:8080/api/v1/periodos [403 Forbidden, 337B, 6ms]
+  √  HTTP 403
+  √  Formato común de error con codigo SIN_PERMISO
+
+□ Gestión / E21 Listar períodos
+└ E21-01 todos → 200
+  GET http://localhost:8080/api/v1/periodos [200 OK, 304B, 8ms]
+  √  HTTP 200
+  √  Lista con id, codigo, inicio, fin y disponible, e incluye el creado
+
+└ E21-02 disponible=true → 200
+  GET http://localhost:8080/api/v1/periodos?disponible=true [200 OK, 304B, 7ms]
+  √  HTTP 200
+  √  Solo períodos disponibles
+
+└ E21-03 sin token → 401 NO_AUTENTICADO
+  GET http://localhost:8080/api/v1/periodos [401 Unauthorized, 355B, 1ms]
+  √  HTTP 401
+  √  Formato común de error con codigo NO_AUTENTICADO
+
+┌─────────────────────────┬────────────────────┬───────────────────┐
+│                         │           executed │            failed │
+├─────────────────────────┼────────────────────┼───────────────────┤
+│              iterations │                  1 │                 0 │
+├─────────────────────────┼────────────────────┼───────────────────┤
+│                requests │                 60 │                 0 │
+├─────────────────────────┼────────────────────┼───────────────────┤
+│            test-scripts │                 74 │                 0 │
+├─────────────────────────┼────────────────────┼───────────────────┤
+│      prerequest-scripts │                 74 │                 0 │
+├─────────────────────────┼────────────────────┼───────────────────┤
+│              assertions │                116 │                13 │
+├─────────────────────────┴────────────────────┴───────────────────┤
+│ total run duration: 8.5s                                         │
+├──────────────────────────────────────────────────────────────────┤
+│ total data received: 15.89kB (approx)                            │
+├──────────────────────────────────────────────────────────────────┤
+│ average response time: 59ms [min: 1ms, max: 1421ms, s.d.: 231ms] │
+└──────────────────────────────────────────────────────────────────┘
+
+[31m   # [39m[31m failure        [39m[31m detail                                                                                                 [39m
+[90m     [39m[90m                [39m[90m                                                                                                        [39m
+ 01.  AssertionError  Formato común de error con codigo TEST_NO_ENCONTRADO                                                   
+                      expected [ 'TEST_NO_ENCONTRADO' ] to include 'RECURSO_NO_ENCONTRADO'                                   
+                      at assertion:1 in test-script                                                                          
+                      inside "Administración / E25 Crear versión / E25-04 test inexistente → 404 TEST_NO_ENCONTRADO"         
+[90m     [39m[90m                [39m[90m                                                                                                        [39m
+ 02.  AssertionError  BLOQUEADO: falta {{clave_completa}}                                                                    
+                      precondición no cumplida                                                                               
+                      at assertion:0 in test-script                                                                          
+                      inside "Administración / E29 Cargar clave / E29-01 positivo: clave completa del borrador → 200"        
+[90m     [39m[90m                [39m[90m                                                                                                        [39m
+ 03.  AssertionError  HTTP 201                                                                                               
+                      expected response to have status code 201 but got 404                                                  
+                      at assertion:0 in test-script                                                                          
+                      inside "Administración / E30 Cargar baremo / E30-01 positivo → 201"                                    
+[90m     [39m[90m                [39m[90m                                                                                                        [39m
+ 04.  AssertionError  HTTP 422                                                                                               
+                      expected response to have status code 422 but got 404                                                  
+                      at assertion:0 in test-script                                                                          
+                      inside "Administración / E30 Cargar baremo / E30-02 rangos superpuestos → 422 BAREMO_INVALIDO"         
+[90m     [39m[90m                [39m[90m                                                                                                        [39m
+ 05.  AssertionError  Formato común de error con codigo BAREMO_INVALIDO                                                      
+                      expected { …(4) } to have property 'codigo'                                                            
+                      at assertion:1 in test-script                                                                          
+                      inside "Administración / E30 Cargar baremo / E30-02 rangos superpuestos → 422 BAREMO_INVALIDO"         
+[90m     [39m[90m                [39m[90m                                                                                                        [39m
+ 06.  AssertionError  HTTP 400                                                                                               
+                      expected response to have status code 400 but got 404                                                  
+                      at assertion:0 in test-script                                                                          
+                      inside "Administración / E30 Cargar baremo / E30-03 sin nombre → 400 SOLICITUD_INVALIDA"               
+[90m     [39m[90m                [39m[90m                                                                                                        [39m
+ 07.  AssertionError  Formato común de error con codigo SOLICITUD_INVALIDA                                                   
+                      expected { …(4) } to have property 'codigo'                                                            
+                      at assertion:1 in test-script                                                                          
+                      inside "Administración / E30 Cargar baremo / E30-03 sin nombre → 400 SOLICITUD_INVALIDA"               
+[90m     [39m[90m                [39m[90m                                                                                                        [39m
+ 08.  AssertionError  HTTP 403                                                                                               
+                      expected response to have status code 403 but got 404                                                  
+                      at assertion:0 in test-script                                                                          
+                      inside "Administración / E30 Cargar baremo / E30-05 rol SUJETO → 403 SIN_PERMISO"                      
+[90m     [39m[90m                [39m[90m                                                                                                        [39m
+ 09.  AssertionError  Formato común de error con codigo SIN_PERMISO                                                          
+                      expected { …(4) } to have property 'codigo'                                                            
+                      at assertion:1 in test-script                                                                          
+                      inside "Administración / E30 Cargar baremo / E30-05 rol SUJETO → 403 SIN_PERMISO"                      
+[90m     [39m[90m                [39m[90m                                                                                                        [39m
+ 10.  AssertionError  HTTP 409                                                                                               
+                      expected response to have status code 409 but got 404                                                  
+                      at assertion:0 in test-script                                                                          
+                      inside "Administración / E31 Publicar versión / E31-01 versión ya publicada → 409 VERSION_NO_EDITABLE" 
+[90m     [39m[90m                [39m[90m                                                                                                        [39m
+ 11.  AssertionError  Formato común de error con codigo VERSION_NO_EDITABLE                                                  
+                      expected { …(4) } to have property 'codigo'                                                            
+                      at assertion:1 in test-script                                                                          
+                      inside "Administración / E31 Publicar versión / E31-01 versión ya publicada → 409 VERSION_NO_EDITABLE" 
+[90m     [39m[90m                [39m[90m                                                                                                        [39m
+ 12.  AssertionError  HTTP 403                                                                                               
+                      expected response to have status code 403 but got 404                                                  
+                      at assertion:0 in test-script                                                                          
+                      inside "Administración / E31 Publicar versión / E31-03 rol SUJETO → 403 SIN_PERMISO"                   
+[90m     [39m[90m                [39m[90m                                                                                                        [39m
+ 13.  AssertionError  Formato común de error con codigo SIN_PERMISO                                                          
+                      expected { …(4) } to have property 'codigo'                                                            
+                      at assertion:1 in test-script                                                                          
+                      inside "Administración / E31 Publicar versión / E31-03 rol SUJETO → 403 SIN_PERMISO"                   
+(node:15572) [DEP0176] DeprecationWarning: fs.F_OK is deprecated, use fs.constants.F_OK instead
+(Use `node --trace-deprecation ...` to show where the warning was created)
