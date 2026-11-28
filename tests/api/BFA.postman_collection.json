@@ -2338,13 +2338,2537 @@
     },
     {
       "name": "Administración",
-      "description": "E25–E31 (versiones, configuraciones, preguntas, claves, baremos y publicación). Casos de TEST-34.",
-      "item": []
+      "description": "TEST-34: E25–E31 (versiones, configuraciones, preguntas, opciones, clave, baremos y publicación) contra la URL pública. Trabaja sobre una versión BORRADOR que crea E25; nunca publica.\n\nConvención (igual que TEST-32): el nombre termina en «→ HTTP CODIGO» y el script de la carpeta comprueba el código y el formato común de error; si falta un dato previo, el caso queda BLOQUEADO. Antes: «Acceso › E14» con una cuenta COORDINADOR. La contraseña solo en el «current value» del entorno; nunca en el repositorio.",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.variables.set('_bloqueado', '');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(() => {",
+              "    const enviado = pm.request.url.toString() + (pm.request.body ? pm.request.body.toString() : '');",
+              "    const marca = pm.variables.get('_bloqueado');",
+              "    const faltan = enviado.match(/\\{\\{[^}]+\\}\\}/g) || (marca ? [marca] : null);",
+              "    if (faltan) {",
+              "        pm.test('BLOQUEADO: falta ' + faltan.join(', '), () => pm.expect.fail('precondición no cumplida'));",
+              "        return;",
+              "    }",
+              "    const m = pm.info.requestName.match(/→ (\\d{3})(?: ([A-Z_|]+))?/);",
+              "    if (!m) return;",
+              "    pm.test('HTTP ' + m[1], () => pm.response.to.have.status(Number(m[1])));",
+              "    if (Number(m[1]) >= 400) {",
+              "        pm.test('Formato común de error' + (m[2] ? ' con codigo ' + m[2].split('|').join(' o ') : ''), () => {",
+              "            const j = pm.response.json();",
+              "            pm.expect(j).to.have.property('codigo');",
+              "            pm.expect(j).to.have.property('mensaje');",
+              "            if (m[2]) pm.expect(m[2].split('|')).to.include(j.codigo);",
+              "        });",
+              "    }",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "PREP E14 sesión de una cuenta SUJETO (para los 403) → 200",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sesion",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "sesion"
+              ]
+            },
+            "description": "Cuenta demo sujeto@ejemplo.test (GEN-34-BE) con la misma {{contrasena}} del entorno (solo «current value»). Si no abre sesión, los casos 403 quedan BLOQUEADOS.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{correo_sujeto}}\",\n  \"contrasena\": \"{{contrasena}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('correo_sujeto')) pm.environment.set('correo_sujeto', 'sujeto@ejemplo.test');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) pm.collectionVariables.set('token_sujeto', pm.response.json().token); else pm.collectionVariables.unset('token_sujeto');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PREP E1 y E2: test BFA y versión publicada → 200",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tests",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tests"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "    const enviado = pm.request.url.toString() + (pm.request.body ? pm.request.body.toString() : '');",
+                  "    if (enviado.includes('{{') || pm.variables.get('_bloqueado') || pm.response.code !== 200) return;",
+                  "    const j = pm.response.json();",
+                  "    const bfa = j.find((t) => t.codigo === 'BFA');",
+                  "    pm.test('Hay un test BFA', () => pm.expect(bfa).to.be.an('object'));",
+                  "    if (!bfa) return;",
+                  "    pm.collectionVariables.set('test_id', bfa.id);",
+                  "    pm.sendRequest({ url: pm.environment.get('base_url') + '/api/v1/tests/' + bfa.id, header: { Authorization: 'Bearer ' + pm.environment.get('token') } }, (err, res) => {",
+                  "        if (err || res.code !== 200) return;",
+                  "        const t = res.json();",
+                  "        pm.collectionVariables.set('version_publicada_id', t.versionFormularioId);",
+                  "        const c = t.subpruebas.find((x) => x.codigo === 'VOC1');",
+                  "        if (c) pm.collectionVariables.set('config_voc1', JSON.stringify({ orden: c.orden, tiempoLimiteSegundos: c.tiempoLimiteSegundos, tipoRespuesta: c.tipoRespuesta, opciones: c.opciones, maximoEntradas: c.maximoEntradas, tienePractica: c.tienePractica, instrucciones: 'Instrucciones ficticias de TEST-34.', ejemplos: [] }));",
+                  "    });",
+                  "})();"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E25 Crear versión",
+          "description": "POST /api/v1/tests/{testId}/versiones (CONFIGURAR_BFA: COORDINADOR): BORRADOR copiado de la última PUBLICADA.",
+          "item": [
+            {
+              "name": "E25-01 positivo → 201",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tests/{{test_id}}/versiones",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tests",
+                    "{{test_id}}",
+                    "versiones"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"codigoVersion\": \"{{codigo_version}}\",\n  \"descripcion\": \"Versión ficticia TEST-34\",\n  \"fuenteRef\": \"FICTICIO-TEST-34\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.collectionVariables.set('codigo_version', 'T34-' + Date.now());"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "(() => {",
+                      "    const enviado = pm.request.url.toString() + (pm.request.body ? pm.request.body.toString() : '');",
+                      "    if (enviado.includes('{{') || pm.variables.get('_bloqueado') || pm.response.code !== 201) return;",
+                      "    const j = pm.response.json();",
+                      "    pm.test('BORRADOR del test BFA', () => { pm.expect(j.id).to.be.a('number'); pm.expect(j.testId).to.eql(Number(pm.collectionVariables.get('test_id'))); pm.expect(j.estado).to.eql('BORRADOR'); });",
+                      "    pm.collectionVariables.set('version_borrador_id', j.id);",
+                      "})();"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "E25-02 mismo código de versión → 409",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tests/{{test_id}}/versiones",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tests",
+                    "{{test_id}}",
+                    "versiones"
+                  ]
+                },
+                "description": "El contrato no nombra el código del 409 («Ya existe ese código de versión para el test»); solo se comprueba el HTTP y el formato.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"codigoVersion\": \"{{codigo_version}}\",\n  \"descripcion\": \"Versión ficticia TEST-34\",\n  \"fuenteRef\": \"FICTICIO-TEST-34\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E25-03 sin codigoVersion → 400 SOLICITUD_INVALIDA",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tests/{{test_id}}/versiones",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tests",
+                    "{{test_id}}",
+                    "versiones"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fuenteRef\": \"FICTICIO-TEST-34\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E25-04 test inexistente → 404 TEST_NO_ENCONTRADO",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tests/999999999/versiones",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tests",
+                    "999999999",
+                    "versiones"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"codigoVersion\": \"T34-NOEXISTE\",\n  \"descripcion\": \"Versión ficticia TEST-34\",\n  \"fuenteRef\": \"FICTICIO-TEST-34\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E25-05 sin token → 401 NO_AUTENTICADO",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tests/{{test_id}}/versiones",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tests",
+                    "{{test_id}}",
+                    "versiones"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"codigoVersion\": \"T34-X\",\n  \"descripcion\": \"Versión ficticia TEST-34\",\n  \"fuenteRef\": \"FICTICIO-TEST-34\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E25-06 rol SUJETO → 403 SIN_PERMISO",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tests/{{test_id}}/versiones",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tests",
+                    "{{test_id}}",
+                    "versiones"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token_sujeto}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"codigoVersion\": \"T34-X\",\n  \"descripcion\": \"Versión ficticia TEST-34\",\n  \"fuenteRef\": \"FICTICIO-TEST-34\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const faltan = [\"token_sujeto\"].filter((k) => !pm.collectionVariables.get(k));",
+                      "if (faltan.length) pm.variables.set('_bloqueado', faltan.join(', ') + ' (de una solicitud anterior)');"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "E26 Configurar subprueba",
+          "description": "PUT /api/v1/versiones/{id}/configuraciones/{codigo} (CONFIGURAR_BFA e INSTRUCCIONES_EDITAR). El cuerpo es la configuración completa de VOC1 leída de E2: la implementación exige orden y otros campos, aunque el esquema del contrato no marca obligatorios.",
+          "item": [
+            {
+              "name": "E26-01 VOC1 del borrador → 200",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_borrador_id}}/configuraciones/VOC1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_borrador_id}}",
+                    "configuraciones",
+                    "VOC1"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{{config_voc1}}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "(() => {",
+                      "    const enviado = pm.request.url.toString() + (pm.request.body ? pm.request.body.toString() : '');",
+                      "    if (enviado.includes('{{') || pm.variables.get('_bloqueado') || pm.response.code !== 200) return;",
+                      "    const j = pm.response.json();",
+                      "    pm.test('Devuelve la configuración guardada con las instrucciones nuevas', () => {",
+                      "        ['orden', 'tiempoLimiteSegundos', 'tipoRespuesta', 'opciones', 'tienePractica', 'instrucciones'].forEach((k) => pm.expect(j, k).to.have.property(k));",
+                      "        pm.expect(j.instrucciones).to.eql('Instrucciones ficticias de TEST-34.');",
+                      "    });",
+                      "})();"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "E26-02 versión publicada → 409 VERSION_NO_EDITABLE",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_publicada_id}}/configuraciones/VOC1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_publicada_id}}",
+                    "configuraciones",
+                    "VOC1"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{{config_voc1}}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E26-03 tipoRespuesta inválido → 400 SOLICITUD_INVALIDA",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_borrador_id}}/configuraciones/VOC1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_borrador_id}}",
+                    "configuraciones",
+                    "VOC1"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tipoRespuesta\": \"NO_EXISTE\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E26-04 sin token → 401 NO_AUTENTICADO",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_borrador_id}}/configuraciones/VOC1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_borrador_id}}",
+                    "configuraciones",
+                    "VOC1"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{{config_voc1}}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E26-05 rol SUJETO → 403 SIN_PERMISO",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_borrador_id}}/configuraciones/VOC1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_borrador_id}}",
+                    "configuraciones",
+                    "VOC1"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token_sujeto}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{{config_voc1}}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const faltan = [\"token_sujeto\"].filter((k) => !pm.collectionVariables.get(k));",
+                      "if (faltan.length) pm.variables.set('_bloqueado', faltan.join(', ') + ' (de una solicitud anterior)');"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "E27 Agregar pregunta",
+          "description": "POST /api/v1/versiones/{id}/configuraciones/{codigo}/preguntas (CONTENIDO_EDITAR). Enunciados ficticios.",
+          "item": [
+            {
+              "name": "E27-01 positivo → 201",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_borrador_id}}/configuraciones/VOC1/preguntas",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_borrador_id}}",
+                    "configuraciones",
+                    "VOC1",
+                    "preguntas"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"numeroVisible\": 91,\n  \"ordenPresentacion\": 91,\n  \"enunciado\": \"Pregunta ficticia TEST-34\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "(() => {",
+                      "    const enviado = pm.request.url.toString() + (pm.request.body ? pm.request.body.toString() : '');",
+                      "    if (enviado.includes('{{') || pm.variables.get('_bloqueado') || pm.response.code !== 201) return;",
+                      "    const j = pm.response.json();",
+                      "    pm.test('Devuelve el id de la pregunta', () => pm.expect(j.id || j.idPregunta || j.preguntaId).to.be.a('number'));",
+                      "    pm.collectionVariables.set('pregunta_nueva_id', j.id || j.idPregunta || j.preguntaId);",
+                      "})();"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "E27-02 mismo número visible → 422 PREGUNTA_DUPLICADA",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_borrador_id}}/configuraciones/VOC1/preguntas",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_borrador_id}}",
+                    "configuraciones",
+                    "VOC1",
+                    "preguntas"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"numeroVisible\": 91,\n  \"ordenPresentacion\": 91,\n  \"enunciado\": \"Pregunta ficticia TEST-34\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E27-03 versión publicada → 409 VERSION_NO_EDITABLE",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_publicada_id}}/configuraciones/VOC1/preguntas",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_publicada_id}}",
+                    "configuraciones",
+                    "VOC1",
+                    "preguntas"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"numeroVisible\": 92,\n  \"ordenPresentacion\": 92,\n  \"enunciado\": \"Pregunta ficticia TEST-34\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E27-04 sin enunciado → 400 SOLICITUD_INVALIDA",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_borrador_id}}/configuraciones/VOC1/preguntas",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_borrador_id}}",
+                    "configuraciones",
+                    "VOC1",
+                    "preguntas"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"numeroVisible\": 93,\n  \"ordenPresentacion\": 93\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E27-05 sin token → 401 NO_AUTENTICADO",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_borrador_id}}/configuraciones/VOC1/preguntas",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_borrador_id}}",
+                    "configuraciones",
+                    "VOC1",
+                    "preguntas"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"numeroVisible\": 94,\n  \"ordenPresentacion\": 94,\n  \"enunciado\": \"Pregunta ficticia TEST-34\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E27-06 rol SUJETO → 403 SIN_PERMISO",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_borrador_id}}/configuraciones/VOC1/preguntas",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_borrador_id}}",
+                    "configuraciones",
+                    "VOC1",
+                    "preguntas"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token_sujeto}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"numeroVisible\": 94,\n  \"ordenPresentacion\": 94,\n  \"enunciado\": \"Pregunta ficticia TEST-34\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const faltan = [\"token_sujeto\"].filter((k) => !pm.collectionVariables.get(k));",
+                      "if (faltan.length) pm.variables.set('_bloqueado', faltan.join(', ') + ' (de una solicitud anterior)');"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "E28 Guardar opciones",
+          "description": "PUT /api/v1/versiones/{id}/preguntas/{preguntaId}/opciones (OPCIONES_EDITAR).",
+          "item": [
+            {
+              "name": "E28-01 positivo → 200",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_borrador_id}}/preguntas/{{pregunta_nueva_id}}/opciones",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_borrador_id}}",
+                    "preguntas",
+                    "{{pregunta_nueva_id}}",
+                    "opciones"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"opciones\": [\n    { \"letra\": \"A\", \"texto\": \"Opción ficticia A\" },\n    { \"letra\": \"B\", \"texto\": \"Opción ficticia B\" },\n    { \"letra\": \"C\", \"texto\": \"Opción ficticia C\" },\n    { \"letra\": \"D\", \"texto\": \"Opción ficticia D\" },\n    { \"letra\": \"E\", \"texto\": \"Opción ficticia E\" }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "(() => {",
+                      "    const enviado = pm.request.url.toString() + (pm.request.body ? pm.request.body.toString() : '');",
+                      "    if (enviado.includes('{{') || pm.variables.get('_bloqueado') || pm.response.code !== 200) return;",
+                      "    const j = pm.response.json();",
+                      "    pm.test('Devuelve las opciones A a E', () => { const ops = j.opciones || j; pm.expect(ops.map((o) => o.letra)).to.eql(['A', 'B', 'C', 'D', 'E']); });",
+                      "})();"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "E28-02 pregunta inexistente → 404 RECURSO_NO_ENCONTRADO",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_borrador_id}}/preguntas/999999999/opciones",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_borrador_id}}",
+                    "preguntas",
+                    "999999999",
+                    "opciones"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"opciones\": [\n    { \"letra\": \"A\", \"texto\": \"Opción ficticia A\" },\n    { \"letra\": \"B\", \"texto\": \"Opción ficticia B\" },\n    { \"letra\": \"C\", \"texto\": \"Opción ficticia C\" },\n    { \"letra\": \"D\", \"texto\": \"Opción ficticia D\" },\n    { \"letra\": \"E\", \"texto\": \"Opción ficticia E\" }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E28-03 sin opciones → 400 SOLICITUD_INVALIDA",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_borrador_id}}/preguntas/{{pregunta_nueva_id}}/opciones",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_borrador_id}}",
+                    "preguntas",
+                    "{{pregunta_nueva_id}}",
+                    "opciones"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E28-04 sin token → 401 NO_AUTENTICADO",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_borrador_id}}/preguntas/{{pregunta_nueva_id}}/opciones",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_borrador_id}}",
+                    "preguntas",
+                    "{{pregunta_nueva_id}}",
+                    "opciones"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"opciones\": [\n    { \"letra\": \"A\", \"texto\": \"Opción ficticia A\" },\n    { \"letra\": \"B\", \"texto\": \"Opción ficticia B\" },\n    { \"letra\": \"C\", \"texto\": \"Opción ficticia C\" },\n    { \"letra\": \"D\", \"texto\": \"Opción ficticia D\" },\n    { \"letra\": \"E\", \"texto\": \"Opción ficticia E\" }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E28-05 rol SUJETO → 403 SIN_PERMISO",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_borrador_id}}/preguntas/{{pregunta_nueva_id}}/opciones",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_borrador_id}}",
+                    "preguntas",
+                    "{{pregunta_nueva_id}}",
+                    "opciones"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token_sujeto}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"opciones\": [\n    { \"letra\": \"A\", \"texto\": \"Opción ficticia A\" },\n    { \"letra\": \"B\", \"texto\": \"Opción ficticia B\" },\n    { \"letra\": \"C\", \"texto\": \"Opción ficticia C\" },\n    { \"letra\": \"D\", \"texto\": \"Opción ficticia D\" },\n    { \"letra\": \"E\", \"texto\": \"Opción ficticia E\" }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const faltan = [\"token_sujeto\"].filter((k) => !pm.collectionVariables.get(k));",
+                      "if (faltan.length) pm.variables.set('_bloqueado', faltan.join(', ') + ' (de una solicitud anterior)');"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "E29 Cargar clave",
+          "description": "PUT /api/v1/versiones/{id}/clave (OPCIONES_EDITAR). El positivo exige una entrada por cada reactivo cerrado del borrador, y ninguna API lista las preguntas de un borrador: queda BLOQUEADO.",
+          "item": [
+            {
+              "name": "E29-01 positivo: clave completa del borrador → 200",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_borrador_id}}/clave",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_borrador_id}}",
+                    "clave"
+                  ]
+                },
+                "description": "Necesita clave_completa: el arreglo de entradas de todos los reactivos cerrados del borrador.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"entradas\": {{clave_completa}}\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const faltan = [\"clave_completa\"].filter((k) => !pm.collectionVariables.get(k));",
+                      "if (faltan.length) pm.variables.set('_bloqueado', faltan.join(', ') + ' (de una solicitud anterior)');"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "E29-02 versión publicada → 409 VERSION_NO_EDITABLE",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_publicada_id}}/clave",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_publicada_id}}",
+                    "clave"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"entradas\": [ { \"preguntaId\": {{pregunta_nueva_id}}, \"opcion\": \"A\" } ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E29-03 sin entradas → 400 SOLICITUD_INVALIDA",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_borrador_id}}/clave",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_borrador_id}}",
+                    "clave"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E29-04 sin token → 401 NO_AUTENTICADO",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_borrador_id}}/clave",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_borrador_id}}",
+                    "clave"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"entradas\": [ { \"preguntaId\": 1, \"opcion\": \"A\" } ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E29-05 rol SUJETO → 403 SIN_PERMISO",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_borrador_id}}/clave",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_borrador_id}}",
+                    "clave"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token_sujeto}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"entradas\": [ { \"preguntaId\": 1, \"opcion\": \"A\" } ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const faltan = [\"token_sujeto\"].filter((k) => !pm.collectionVariables.get(k));",
+                      "if (faltan.length) pm.variables.set('_bloqueado', faltan.join(', ') + ' (de una solicitud anterior)');"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "E30 Cargar baremo",
+          "description": "POST /api/v1/baremos (CONFIGURAR_BFA). Rangos ficticios, marcados como FICTICIO.",
+          "item": [
+            {
+              "name": "E30-01 positivo → 201",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/baremos",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "baremos"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"BAREMO-FICTICIO-T34-{{$timestamp}}\",\n  \"version\": \"v-ficticia-T34\",\n  \"anioNorma\": 2026,\n  \"poblacionReferencia\": \"FICTICIA\",\n  \"rangos\": [\n    { \"idFactor\": \"VOC1\", \"percentil\": 10, \"limiteInferior\": 0, \"limiteSuperior\": 5, \"estadoCelda\": \"RANGO\" },\n    { \"idFactor\": \"VOC1\", \"percentil\": 50, \"limiteInferior\": 6, \"limiteSuperior\": 12, \"estadoCelda\": \"RANGO\" },\n    { \"idFactor\": \"VOC1\", \"percentil\": 90, \"limiteInferior\": 13, \"limiteSuperior\": 20, \"estadoCelda\": \"RANGO\" }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "(() => {",
+                      "    const enviado = pm.request.url.toString() + (pm.request.body ? pm.request.body.toString() : '');",
+                      "    if (enviado.includes('{{') || pm.variables.get('_bloqueado') || pm.response.code !== 201) return;",
+                      "    const j = pm.response.json();",
+                      "    pm.test('Devuelve idBaremo', () => pm.expect(j.idBaremo).to.be.a('number'));",
+                      "})();"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "E30-02 rangos superpuestos → 422 BAREMO_INVALIDO",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/baremos",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "baremos"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"BAREMO-FICTICIO-T34-SUP\",\n  \"version\": \"v-ficticia-T34\",\n  \"anioNorma\": 2026,\n  \"poblacionReferencia\": \"FICTICIA\",\n  \"rangos\": [\n    { \"idFactor\": \"VOC1\", \"percentil\": 10, \"limiteInferior\": 0, \"limiteSuperior\": 6, \"estadoCelda\": \"RANGO\" },\n    { \"idFactor\": \"VOC1\", \"percentil\": 50, \"limiteInferior\": 5, \"limiteSuperior\": 12, \"estadoCelda\": \"RANGO\" }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E30-03 sin nombre → 400 SOLICITUD_INVALIDA",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/baremos",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "baremos"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"version\": \"v\",\n  \"anioNorma\": 2026,\n  \"rangos\": [ { \"idFactor\": \"VOC1\", \"percentil\": 10, \"limiteInferior\": 0, \"limiteSuperior\": 5, \"estadoCelda\": \"RANGO\" } ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E30-04 sin token → 401 NO_AUTENTICADO",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/baremos",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "baremos"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"X\",\n  \"version\": \"v-ficticia-T34\",\n  \"anioNorma\": 2026,\n  \"poblacionReferencia\": \"FICTICIA\",\n  \"rangos\": [\n    { \"idFactor\": \"VOC1\", \"percentil\": 10, \"limiteInferior\": 0, \"limiteSuperior\": 5, \"estadoCelda\": \"RANGO\" }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E30-05 rol SUJETO → 403 SIN_PERMISO",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/baremos",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "baremos"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token_sujeto}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"X\",\n  \"version\": \"v-ficticia-T34\",\n  \"anioNorma\": 2026,\n  \"poblacionReferencia\": \"FICTICIA\",\n  \"rangos\": [\n    { \"idFactor\": \"VOC1\", \"percentil\": 10, \"limiteInferior\": 0, \"limiteSuperior\": 5, \"estadoCelda\": \"RANGO\" }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const faltan = [\"token_sujeto\"].filter((k) => !pm.collectionVariables.get(k));",
+                      "if (faltan.length) pm.variables.set('_bloqueado', faltan.join(', ') + ' (de una solicitud anterior)');"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "E31 Publicar versión",
+          "description": "POST /api/v1/versiones/{id}/publicar (CONFIGURAR_BFA). Sin positivo a propósito: publicar en la URL pública cambiaría la versión que usa la demo.",
+          "item": [
+            {
+              "name": "E31-01 versión ya publicada → 409 VERSION_NO_EDITABLE",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_publicada_id}}/publicar",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_publicada_id}}",
+                    "publicar"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "E31-02 sin token → 401 NO_AUTENTICADO",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_borrador_id}}/publicar",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_borrador_id}}",
+                    "publicar"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                }
+              }
+            },
+            {
+              "name": "E31-03 rol SUJETO → 403 SIN_PERMISO",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/versiones/{{version_borrador_id}}/publicar",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "versiones",
+                    "{{version_borrador_id}}",
+                    "publicar"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token_sujeto}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const faltan = [\"token_sujeto\"].filter((k) => !pm.collectionVariables.get(k));",
+                      "if (faltan.length) pm.variables.set('_bloqueado', faltan.join(', ') + ' (de una solicitud anterior)');"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "name": "Gestión",
-      "description": "E18–E21 y E23 (sujetos y períodos). Casos de TEST-34.",
-      "item": []
+      "description": "TEST-34: E18–E21 y E23 (sujetos y períodos) contra la URL pública con el entorno publico. Un positivo y los negativos del contrato por endpoint. Del entorno: sujeto_id (un sujeto asignado a la cuenta) y, opcional, correo_sujeto.\n\nConvención (igual que TEST-32): el nombre termina en «→ HTTP CODIGO» y el script de la carpeta comprueba el código y el formato común de error; si falta un dato previo, el caso queda BLOQUEADO. Antes: «Acceso › E14» con una cuenta COORDINADOR. La contraseña solo en el «current value» del entorno; nunca en el repositorio.",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.variables.set('_bloqueado', '');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(() => {",
+              "    const enviado = pm.request.url.toString() + (pm.request.body ? pm.request.body.toString() : '');",
+              "    const marca = pm.variables.get('_bloqueado');",
+              "    const faltan = enviado.match(/\\{\\{[^}]+\\}\\}/g) || (marca ? [marca] : null);",
+              "    if (faltan) {",
+              "        pm.test('BLOQUEADO: falta ' + faltan.join(', '), () => pm.expect.fail('precondición no cumplida'));",
+              "        return;",
+              "    }",
+              "    const m = pm.info.requestName.match(/→ (\\d{3})(?: ([A-Z_|]+))?/);",
+              "    if (!m) return;",
+              "    pm.test('HTTP ' + m[1], () => pm.response.to.have.status(Number(m[1])));",
+              "    if (Number(m[1]) >= 400) {",
+              "        pm.test('Formato común de error' + (m[2] ? ' con codigo ' + m[2].split('|').join(' o ') : ''), () => {",
+              "            const j = pm.response.json();",
+              "            pm.expect(j).to.have.property('codigo');",
+              "            pm.expect(j).to.have.property('mensaje');",
+              "            if (m[2]) pm.expect(m[2].split('|')).to.include(j.codigo);",
+              "        });",
+              "    }",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "PREP E14 sesión de una cuenta SUJETO (para los 403) → 200",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sesion",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "sesion"
+              ]
+            },
+            "description": "Cuenta demo sujeto@ejemplo.test (GEN-34-BE) con la misma {{contrasena}} del entorno (solo «current value»). Si no abre sesión, los casos 403 quedan BLOQUEADOS.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{correo_sujeto}}\",\n  \"contrasena\": \"{{contrasena}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('correo_sujeto')) pm.environment.set('correo_sujeto', 'sujeto@ejemplo.test');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) pm.collectionVariables.set('token_sujeto', pm.response.json().token); else pm.collectionVariables.unset('token_sujeto');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E18 Registrar sujeto",
+          "description": "POST /api/v1/sujetos (SUJETO_CREAR: ACADEMICO o COORDINADOR). Datos ficticios; crea un sujeto en la base de la URL pública.",
+          "item": [
+            {
+              "name": "E18-01 positivo → 201",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/sujetos",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sujetos"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identificadorInstitucional\": \"{{ident_nuevo}}\",\n  \"nombres\": \"Sujeto\",\n  \"apellidos\": \"Ficticio TEST-34\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.collectionVariables.set('ident_nuevo', 'T34-' + Date.now());"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "(() => {",
+                      "    const enviado = pm.request.url.toString() + (pm.request.body ? pm.request.body.toString() : '');",
+                      "    if (enviado.includes('{{') || pm.variables.get('_bloqueado') || pm.response.code !== 201) return;",
+                      "    const j = pm.response.json();",
+                      "    pm.test('Devuelve id, identificadorInstitucional, nombres y apellidos', () => {",
+                      "        ['id', 'identificadorInstitucional', 'nombres', 'apellidos'].forEach((k) => pm.expect(j, k).to.have.property(k));",
+                      "        pm.expect(j.identificadorInstitucional).to.eql(pm.collectionVariables.get('ident_nuevo'));",
+                      "    });",
+                      "    pm.test('Location apunta al sujeto creado', () => pm.expect(pm.response.headers.get('Location')).to.include('/api/v1/sujetos/' + j.id));",
+                      "    pm.collectionVariables.set('sujeto_nuevo_id', j.id);",
+                      "})();"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "E18-02 mismo identificador → 409 SUJETO_DUPLICADO",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/sujetos",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sujetos"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identificadorInstitucional\": \"{{ident_nuevo}}\",\n  \"nombres\": \"Sujeto\",\n  \"apellidos\": \"Ficticio TEST-34\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E18-03 sin nombres → 400 SOLICITUD_INVALIDA",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/sujetos",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sujetos"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identificadorInstitucional\": \"T34-SIN-NOMBRES\",\n  \"apellidos\": \"Ficticio\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E18-04 sin token → 401 NO_AUTENTICADO",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/sujetos",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sujetos"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identificadorInstitucional\": \"{{ident_nuevo}}\",\n  \"nombres\": \"Sujeto\",\n  \"apellidos\": \"Ficticio TEST-34\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E18-05 rol SUJETO → 403 SIN_PERMISO",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/sujetos",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sujetos"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token_sujeto}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identificadorInstitucional\": \"{{ident_nuevo}}\",\n  \"nombres\": \"Sujeto\",\n  \"apellidos\": \"Ficticio TEST-34\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const faltan = [\"token_sujeto\"].filter((k) => !pm.collectionVariables.get(k));",
+                      "if (faltan.length) pm.variables.set('_bloqueado', faltan.join(', ') + ' (de una solicitud anterior)');"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "E19 Consultar sujeto",
+          "description": "GET /api/v1/sujetos/{id}: SUJETO_LEER y asignación (docs/arquitectura/decision-alcance-evaluaciones.md). Un sujeto no asignado responde 403 aunque no exista.",
+          "item": [
+            {
+              "name": "E19-01 sujeto asignado → 200",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/sujetos/{{sujeto_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sujetos",
+                    "{{sujeto_id}}"
+                  ]
+                },
+                "description": "sujeto_id del entorno: un sujeto asignado a la cuenta de la sesión."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "(() => {",
+                      "    const enviado = pm.request.url.toString() + (pm.request.body ? pm.request.body.toString() : '');",
+                      "    if (enviado.includes('{{') || pm.variables.get('_bloqueado') || pm.response.code !== 200) return;",
+                      "    const j = pm.response.json();",
+                      "    pm.test('Devuelve id e identificadorInstitucional', () => { pm.expect(j.id).to.eql(Number(pm.environment.get('sujeto_id'))); pm.expect(j).to.have.property('identificadorInstitucional'); });",
+                      "    pm.collectionVariables.set('ident_asignado', j.identificadorInstitucional);",
+                      "})();"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "E19-02 sujeto recién creado sin asignación → 403 SIN_PERMISO",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/sujetos/{{sujeto_nuevo_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sujetos",
+                    "{{sujeto_nuevo_id}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "E19-03 inexistente → 403 SIN_PERMISO",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/sujetos/999999999",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sujetos",
+                    "999999999"
+                  ]
+                },
+                "description": "La decisión de alcance pide 403 antes de consultar datos, aunque el sujeto no exista."
+              }
+            },
+            {
+              "name": "E19-04 sin token → 401 NO_AUTENTICADO",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/sujetos/{{sujeto_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sujetos",
+                    "{{sujeto_id}}"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "E23 Buscar sujeto",
+          "description": "GET /api/v1/sujetos?identificadorInstitucional=…: 0 o 1 elemento; solo devuelve sujetos asignados.",
+          "item": [
+            {
+              "name": "E23-01 identificador de un sujeto asignado → 200",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/sujetos?identificadorInstitucional={{ident_asignado}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sujetos"
+                  ],
+                  "query": [
+                    {
+                      "key": "identificadorInstitucional",
+                      "value": "{{ident_asignado}}"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "(() => {",
+                      "    const enviado = pm.request.url.toString() + (pm.request.body ? pm.request.body.toString() : '');",
+                      "    if (enviado.includes('{{') || pm.variables.get('_bloqueado') || pm.response.code !== 200) return;",
+                      "    const j = pm.response.json();",
+                      "    pm.test('Una lista con el sujeto asignado', () => { pm.expect(j).to.be.an('array').with.lengthOf(1); pm.expect(j[0].identificadorInstitucional).to.eql(pm.collectionVariables.get('ident_asignado')); });",
+                      "})();"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "E23-02 identificador de un sujeto no asignado → 200",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/sujetos?identificadorInstitucional={{ident_nuevo}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sujetos"
+                  ],
+                  "query": [
+                    {
+                      "key": "identificadorInstitucional",
+                      "value": "{{ident_nuevo}}"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "(() => {",
+                      "    const enviado = pm.request.url.toString() + (pm.request.body ? pm.request.body.toString() : '');",
+                      "    if (enviado.includes('{{') || pm.variables.get('_bloqueado') || pm.response.code !== 200) return;",
+                      "    const j = pm.response.json();",
+                      "    pm.test('Lista vacía: no devuelve un sujeto ajeno', () => pm.expect(j).to.be.an('array').that.is.empty);",
+                      "})();"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "E23-03 sin token → 401 NO_AUTENTICADO",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/sujetos?identificadorInstitucional=T34-X",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "sujetos"
+                  ],
+                  "query": [
+                    {
+                      "key": "identificadorInstitucional",
+                      "value": "T34-X"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "E20 Crear período",
+          "description": "POST /api/v1/periodos (PERIODO_CREAR: COORDINADOR). Crea un período ficticio en la base de la URL pública.",
+          "item": [
+            {
+              "name": "E20-01 positivo → 201",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/periodos",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "periodos"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"codigo\": \"{{periodo_codigo}}\",\n  \"denominacion\": \"Periodo ficticio TEST-34\",\n  \"inicio\": \"2027-08-01\",\n  \"fin\": \"2027-12-15\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.collectionVariables.set('periodo_codigo', 'T34-' + Date.now());"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "(() => {",
+                      "    const enviado = pm.request.url.toString() + (pm.request.body ? pm.request.body.toString() : '');",
+                      "    if (enviado.includes('{{') || pm.variables.get('_bloqueado') || pm.response.code !== 201) return;",
+                      "    const j = pm.response.json();",
+                      "    pm.test('Devuelve id, codigo, denominacion, inicio y fin', () => {",
+                      "        ['id', 'codigo', 'denominacion', 'inicio', 'fin'].forEach((k) => pm.expect(j, k).to.have.property(k));",
+                      "        pm.expect(j.codigo).to.eql(pm.collectionVariables.get('periodo_codigo'));",
+                      "    });",
+                      "    pm.test('Location apunta al período creado', () => pm.expect(pm.response.headers.get('Location')).to.include('/api/v1/periodos/' + j.id));",
+                      "    pm.collectionVariables.set('periodo_nuevo_id', j.id);",
+                      "})();"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "E20-02 mismo código → 409 PERIODO_DUPLICADO",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/periodos",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "periodos"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"codigo\": \"{{periodo_codigo}}\",\n  \"denominacion\": \"Periodo ficticio TEST-34\",\n  \"inicio\": \"2027-08-01\",\n  \"fin\": \"2027-12-15\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E20-03 inicio posterior al fin → 422 PERIODO_INVALIDO",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/periodos",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "periodos"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"codigo\": \"{{periodo_codigo}}-INV\",\n  \"denominacion\": \"Periodo ficticio TEST-34\",\n  \"inicio\": \"2027-12-20\",\n  \"fin\": \"2027-08-01\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E20-04 sin codigo → 400 SOLICITUD_INVALIDA",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/periodos",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "periodos"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"denominacion\": \"Periodo ficticio\",\n  \"inicio\": \"2027-08-01\",\n  \"fin\": \"2027-12-15\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E20-05 sin token → 401 NO_AUTENTICADO",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/periodos",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "periodos"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"codigo\": \"T34-X\",\n  \"denominacion\": \"Periodo ficticio TEST-34\",\n  \"inicio\": \"2027-08-01\",\n  \"fin\": \"2027-12-15\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "E20-06 rol SUJETO → 403 SIN_PERMISO",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/periodos",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "periodos"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token_sujeto}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"codigo\": \"T34-X\",\n  \"denominacion\": \"Periodo ficticio TEST-34\",\n  \"inicio\": \"2027-08-01\",\n  \"fin\": \"2027-12-15\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const faltan = [\"token_sujeto\"].filter((k) => !pm.collectionVariables.get(k));",
+                      "if (faltan.length) pm.variables.set('_bloqueado', faltan.join(', ') + ' (de una solicitud anterior)');"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "E21 Listar períodos",
+          "description": "GET /api/v1/periodos (PERIODO_LEER).",
+          "item": [
+            {
+              "name": "E21-01 todos → 200",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/periodos",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "periodos"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "(() => {",
+                      "    const enviado = pm.request.url.toString() + (pm.request.body ? pm.request.body.toString() : '');",
+                      "    if (enviado.includes('{{') || pm.variables.get('_bloqueado') || pm.response.code !== 200) return;",
+                      "    const j = pm.response.json();",
+                      "    pm.test('Lista con id, codigo, inicio, fin y disponible, e incluye el creado', () => {",
+                      "        pm.expect(j).to.be.an('array');",
+                      "        j.forEach((p) => ['id', 'codigo', 'inicio', 'fin', 'disponible'].forEach((k) => pm.expect(p, k).to.have.property(k)));",
+                      "        if (pm.collectionVariables.get('periodo_codigo')) pm.expect(j.map((p) => p.codigo)).to.include(pm.collectionVariables.get('periodo_codigo'));",
+                      "    });",
+                      "})();"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "E21-02 disponible=true → 200",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/periodos?disponible=true",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "periodos"
+                  ],
+                  "query": [
+                    {
+                      "key": "disponible",
+                      "value": "true"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "(() => {",
+                      "    const enviado = pm.request.url.toString() + (pm.request.body ? pm.request.body.toString() : '');",
+                      "    if (enviado.includes('{{') || pm.variables.get('_bloqueado') || pm.response.code !== 200) return;",
+                      "    const j = pm.response.json();",
+                      "    pm.test('Solo períodos disponibles', () => j.forEach((p) => pm.expect(p.disponible).to.eql(true)));",
+                      "})();"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "E21-03 sin token → 401 NO_AUTENTICADO",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/periodos",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "periodos"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                }
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }
