@@ -61,3 +61,14 @@ El PR #100 conserva su propia revisión y una observación sobre la convención 
 Se inspeccionaron las siete láminas HTML y el manifiesto del [ZIP editable del sprint](https://drive.google.com/file/d/1BE2Uh49OYHF9rPXEz9FFiKBezERUTeor/view?usp=drive_link). El mapa y la tabla pantalla–RF cubren inicio e instrucciones (W01–W02), reactivo y estados de recuperación (W03–W04), cierre y resultados (W05–W06) y administración (W07). El diseño de guardado, recuperación, resultados y administración describe el flujo previsto. En el prototipo verificado, el guardado es local a la sesión y la recarga pierde el avance.
 
 La prueba con teclado comprobó el orden entre los campos del formulario, el inicio con Intro, la selección y el cambio de opción con Espacio y flecha, y el avance con Tab e Intro desde el grupo de respuestas. El punto de foco inicial en cada pantalla se seleccionó para la prueba. Quedan pendientes las pruebas completas de gestión de foco y lector de pantalla.
+
+## Hallazgo de accesibilidad reproducido
+
+En Chromium con Playwright y el mismo commit del prototipo, activé por teclado «Iniciar aplicación», «Comenzar» y «Siguiente» al pasar de la primera a la segunda posición. En las tres transiciones se mostró la pantalla esperada y `document.activeElement` pasó a `BODY`. El grupo activo expuso «Alternativas de respuesta» y ocho opciones con nombres accesibles. Con el grupo enfocado, Espacio y flecha derecha permitieron seleccionar la segunda opción, y Tab llevó a «Siguiente».
+
+| ID | Observación | Criterio de corrección |
+| --- | --- | --- |
+| ACC-01 | Cuando se reemplaza la pantalla, el foco deja de estar en una posición útil del nuevo contenido. | Al cambiar de pantalla, llevar el foco al encabezado o al contenedor principal de la nueva fase. Al avanzar de posición, informar la nueva lámina y posición y permitir llegar al grupo de opciones en orden lógico. |
+| ACC-02 | Chromium expone el grupo y los nombres de las opciones. La prueba confirmó el árbol accesible y el teclado. | Ejecutar un recorrido con lector de pantalla y comprobar los anuncios de fase, posición, selección y avisos dinámicos. |
+
+La evidencia permite revisar el recorrido local y el hallazgo de foco. La corrección del prototipo requiere una nueva versión de [#100](https://github.com/Nell16/sistema-evaluaciones/pull/100). Los escenarios dependientes de API conservan los criterios de la matriz.
